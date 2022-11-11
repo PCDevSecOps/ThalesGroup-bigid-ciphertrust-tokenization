@@ -1,0 +1,99 @@
+import mysql.connector
+import os
+import sys
+
+from mysql.connector import Error
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.log import Log     # noqa: E402
+from databases.connection_interface import DBConnectionInterface     # noqa: E402
+
+
+class MySQLConnector(DBConnectionInterface):
+    def __init__(self, hostname: str, port: int, database: str, username: str, password: str, *args, **kwargs):
+        self._hostname = hostname
+        self._port     = port
+        self._database = database
+        self._username = username
+        self._password = password
+
+        self.is_connected = False
+
+        if self.test_connection():
+            self._connect()
+    
+    def test_connection(self):
+        try:
+            connection = mysql.connector.connect(host=self._hostname,
+                                                 port=self._port,
+                                                 database=self._database,
+                                                 user=self._username,
+                                                 password=self._password,
+                                                 connection_timeout=5)
+            if connection.is_connected():
+                cursor = connection.cursor()
+                cursor.execute("select database();")
+                _ = cursor.fetchone()
+                Log.info(f"MySQL test connection {self._username}@{self._hostname}:{self._port}/{self._database} OK")
+                cursor.close()
+                connection.close()
+                return True
+
+        except Error as e:
+            Log.error(f"Error while testing connection to MySQL: {e}")
+            return False
+    
+    def _connect(self):
+        try:
+            self._connection = mysql.connector.connect(host=self._hostname,
+                                                       port=self._port,
+                                                       database=self._database,
+                                                       user=self._username,
+                                                       password=self._password,
+                                                       connection_timeout=5)
+            if self._connection.is_connected():
+                Log.info(f"Connected at MySQL {self._username}@{self._hostname}:{self._port}/{self._database}")
+                self.is_connected = True
+
+        except Error as e:
+            Log.error(f"Error while connecting to MySQL {self._username}@{self._hostname}:{self._port}/{self._database}: {e}")
+            self.is_connected = False
+            raise e
+
+    def run_query(self, query: str):
+        if self.is_connected:
+            try:
+                if self._connection.is_connected():
+                    cursor = self._connection.cursor(buffered=True)
+                    cursor.execute(query)
+                    # record = cursor.fetchall() # Will execute update queries only -> no data to fetch
+                    Log.info(f"MySQL Query execution OK")
+                    self._connection.commit()
+                    cursor.close()
+
+            except Error as e:
+                Log.error(f"Error while executing MySQL query: {e}")
+                raise e
+        else:
+            Log.warn("MySQL connection is not established. Will not execute query")
+    
+    def get_update_query(self, schema: str, table_name: str, token: str, target_col: str,
+                target_col_val: str, unique_id_col: str, unique_id_val: str):
+        query = f"""
+            UPDATE {schema}.{table_name}
+            SET {target_col} = '{token}'
+            WHERE {target_col} = '{target_col_val}' AND {unique_id_col} = '{unique_id_val}'
+        """
+        return query
+
+    def close_connection(self):
+        if self.is_connected and self._connection.is_connected():
+            self._connection.close()
+            Log.info(f"MySQL closed connection {self._username}@{self._hostname}:{self._port}/{self._database}")
+    
+
+if __name__ == "__main__":
+    mysql_conn = MySQLConnector("192.168.0.105", 3306, "TokenizationDemo", "test", "Thales123!")
+    mysql_conn.run_query("SELECT SSN FROM sample_data WHERE FNAME = 'Huntley'")
+    # mysql_conn.run_query("\n            UPDATE TokenizationDemo.Data100k\n            SET CARDNUMBERNUM = 'CC-IjZf329mm0qO4593'\n            WHERE CARDNUMBERNUM = '4456643983384593' AND CPF = '646.103.270-31'\n        ")
+    mysql_conn.close_connection()

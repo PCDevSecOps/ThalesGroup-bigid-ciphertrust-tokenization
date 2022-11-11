@@ -1,0 +1,175 @@
+{
+  "app_name": "Thales-BigID Anonimization API",
+  "version": "1.0.0",
+  "description": "This API reads all minimization requests and anonimize data",
+  "category": "privacy",
+  "license_type":"FREE",
+  "vendor": "BigID",
+  "global_params": [
+    {
+      "param_name": "categories",
+      "param_type": "String",
+      "is_cleartext": true,
+      "param_description": "Anonimization Categories",
+      "default_value": "PII,bank",
+      "hint": "Comma separated, case sensitive",
+      "param_priority": "primary",
+      "is_mandatory": false
+    },
+    {
+      "param_name": "password",
+      "param_type": "String",
+      "is_cleartext": false,
+      "param_description": "password",
+      "default_value": "password",
+      "hint": "put password here",
+      "param_priority": "primary",
+      "is_mandatory": false
+    },
+   {
+     "param_name": "username_NEW_new_new",
+     "param_type": "String",
+     "is_cleartext": true,
+     "param_description": "Username",
+     "default_value": "default",
+     "hint": "put username here",
+     "param_priority": "primary",
+     "is_mandatory": true
+   }
+  ],
+  "actions": [
+    {
+      "action_id": "helloWorld",
+      "description": "Hello world action",
+      "is_sync": true,
+      "action_params": [
+        {
+          "param_name": "idConnectionName",
+          "param_type": "String",
+          "is_cleartext": false,
+          "param_description": "An Entity source connection name, which we want to receive",
+          "default_value": "identity source",
+          "param_priority": "primary",
+          "is_mandatory": false
+        },
+        {
+          "param_name": "mandatoryText",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "Text mandatory param",
+          "default_value": "default",
+          "param_priority": "primary",
+          "is_mandatory": true,
+          "input_type": "text"
+        },
+        {
+          "param_name": "singleSelection",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "A single selection field",
+          "param_priority": "primary",
+          "is_mandatory": false,
+          "default_value": "Val1",
+          "input_type": "singleSelection",
+          "input_items": ["Val1", "Val2", "Val4"]
+        },
+        {
+          "param_name": "mandatoryMultipleSelection",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "Test a multi option param",
+          "default_value": "mVal1",
+          "param_priority": "primary",
+          "is_mandatory": true,
+          "input_type": "multipleSelection",
+          "input_items": ["mVal1", "mVal2", "mVal3", "mVal4", "mVal5"]
+        },
+        {
+          "param_name": "notMandatoryMultipleSelection",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "Test a multi option param",
+          "default_value": "mVal3",
+          "param_priority": "primary",
+          "is_mandatory": false,
+          "input_type": "multipleSelection",
+          "input_items": ["mVal1", "mVal2", "mVal3", "mVal4", "mVal5"]
+        }
+      ]
+    },
+    {
+      "action_id": "Anonimize",
+      "description": "Reads all pending minimization requests and updates data sources with irreversible tokens",
+      "is_sync": true,
+      "action_params": [
+        {
+          "param_name": "Categories",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "List of comma separated categories to be anonimized. If empty, will anonimize everything",
+          "default_value": "PII,Financial",
+          "param_priority": "primary",
+          "is_mandatory": false
+        },
+        {
+          "param_name": "CTSUsername",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "The CTS user that will perform the anonimization",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSPassword",
+          "param_type": "String",
+          "is_cleartext": false,
+          "param_description": "CTS user's password",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSTokengroup",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "CTS Tokenization Group",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSTokentemplate",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "CTS Tokenization Template",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    {
+      "action": "data-owner",
+      "label": "Data Owner",
+      "description": "This is an admin permission description"
+    },
+    {
+      "action": "auditor",
+      "label": "Auditor",
+      "description": "This is an owner permission description"
+    },
+    {
+      "action": "admin",
+      "label": "Admin",
+      "description": "This is an viewer permission description"
+    },
+    {
+      "action": "individual",
+      "label": "Individual",
+      "description": "This is an viewer permission description"
+    }
+  ]
+}
