@@ -8,3 +8,11 @@ class ConnectorNotImplementedException(Exception):
 
 class CTSException(Exception):
     pass
+
+
+class OracleConnectorException(Exception):
+    pass
+
+
+class MySQLConnectorException(Exception):
+    pass

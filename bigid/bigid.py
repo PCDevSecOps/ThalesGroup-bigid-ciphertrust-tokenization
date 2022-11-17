@@ -5,23 +5,23 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.log import Log                         # noqa: E402
 from utils.exceptions import BigIDAPIException    # noqa: E402
-from utils.utils import json_get_request, read_config_file, get_bigid_user_token
+from utils.utils import json_get_request, json_post_request, read_config_file, get_bigid_user_token
 from utils.ds_connection import DataSourceConnection
 
 
 class BigIDAPI:
     def __init__(self, config, base_url: str):
-        self._config                  = config
-        self._user_token              = get_bigid_user_token(self._config["BigID"]["user_token_path"])
-        self.base_url                 = base_url
+        self._config     = config
+        self._user_token = get_bigid_user_token(self._config["BigID"]["user_token_path"])
+        self.base_url    = base_url
         self._access_token_h_duration = 23     # Access token duration in hours
 
         self._access_token_time        = None
         self._access_token             = None
-        self.minimization_requests     = []    # [{"requestId":"<requestId>","database":"<rdb-mysql>"},...]
+        self.minimization_requests     = []
 
         self._update_session_token()
-    
+
     def _update_session_token(self):
         token_url = f"{self.base_url}refresh-access-token"
         headers = {
@@ -29,46 +29,51 @@ class BigIDAPI:
             "Authorization": self._user_token
         }
         get_response = json_get_request(token_url, headers)
-        
+
         if get_response.status_code != 200:
             Log.error(f"BigID session token HTTP {get_response.status_code}")
-            raise BigIDAPIException(f"BigID access token request failed with status code {get_response.status_code}: {get_response.text}")
-        
+            raise BigIDAPIException("BigID access token request failed "
+                + f"with status code {get_response.status_code}: {get_response.text}")
+
         self._access_token = get_response.json()["systemToken"]
         self._access_token_time = time.time()
         Log.info("BigID session token updated")
-    
+
     def validate_session_token(self):
         if time.time() - self._access_token_time > self._access_token_h_duration * 3600:
             self._update_session_token()
 
     def update_minimization_requests(self):
         self.validate_session_token()
-        token_url = f"{self.base_url}data-minimization/objects"
+        url = f"{self.base_url}data-minimization/objects"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token
         }
-        get_response = json_get_request(token_url, headers)
-        
+        get_response = json_get_request(url, headers)
+
         if get_response.status_code != 200:
-            Log.error(f"BigID minimization request failed with status code {get_response.status_code}: {get_response.text}")
-            raise BigIDAPIException(f"BigID minimization request failed with status code {get_response.status_code}: {get_response.text}")
-        
+            Log.error("BigID minimization request failed with status code "
+                + f"{get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID minimization request failed with"
+                + f" status code {get_response.status_code}: {get_response.text}")
+
         get_response = get_response.json()
+        min_requests = []
         for req in get_response["data"]["deleteQueries"]:
             if req["state"] == "Pending":
                 database_name = req["scannerType"]
                 request_id = req["requestId"]
-                self.minimization_requests.append({
+                min_requests.append({
                     "requestId": request_id,
                     "database": database_name
                 })
+        self.minimization_requests = min_requests
         Log.info(f"Got {len(self.minimization_requests)} minimization requests from BigID")
-            
+
     def get_minimization_requests(self):
         return self.minimization_requests
-    
+
     def get_sar_report(self, request_id: str):
         self.validate_session_token()
 
@@ -80,51 +85,80 @@ class BigIDAPI:
         get_response = json_get_request(sar_url, headers)
 
         if get_response.status_code != 200:
-            Log.error(f"BigID sar report failed with status code {get_response.status_code}: {get_response.text}")
-            raise BigIDAPIException(f"BigID sar report failed with status code {get_response.status_code}: {get_response.text}")
-        
+            Log.error("BigID sar report failed with status code "
+                + f"{get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID sar report failed with status "
+                + f"code {get_response.status_code}: {get_response.text}")
+
         get_response = get_response.json()
         Log.info(f"Got sar report from BigID for {request_id=}")
         return get_response["records"]
-    
+
     def get_data_source_conn_from_source_name(self, data_source_name: str):
         self.validate_session_token()
-        token_url = f"{self.base_url}ds_connections/{data_source_name}"
+        url = f"{self.base_url}ds_connections/{data_source_name}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token
         }
-        get_response = json_get_request(token_url, headers)
-        
+        get_response = json_get_request(url, headers)
+
         if get_response.status_code != 200:
-            Log.error(f"BigID data source request failed with status code {get_response.status_code}: {get_response.text}")
-            raise BigIDAPIException(f"BigID data source request failed with status code {get_response.status_code}: {get_response.text}")
-        
+            Log.error("BigID data source request failed with status code"
+                + f" {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID data source request failed with"
+                + f" status code {get_response.status_code}: {get_response.text}")
+
         get_response = get_response.json()
         rdb_url = get_response["ds_connection"]["rdb_url"]
         rdb_name = get_response["ds_connection"]["rdb_name"]
-        type = get_response["ds_connection"]["type"]
-        return DataSourceConnection(rdb_url, type, rdb_name)
-    
-    def get_data_source_credentials(self, tpaId: str, data_source_name: str):
+        conn_type = get_response["ds_connection"]["type"]
+        return DataSourceConnection(rdb_url, conn_type, rdb_name)
+
+    def get_data_source_credentials(self, tpa_id: str, data_source_name: str):
         self.validate_session_token()
-        token_url = f"{self.base_url}tpa/{tpaId}/credentials/{data_source_name}"
+        url = f"{self.base_url}tpa/{tpa_id}/credentials/{data_source_name}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token
         }
-        get_response = json_get_request(token_url, headers)
-        
+        get_response = json_get_request(url, headers)
+
         if get_response.status_code != 200:
-            Log.error(f"BigID data source credentials request failed with status code {get_response.status_code}: {get_response.text}")
-            raise BigIDAPIException(f"BigID data source credentials request failed with status code {get_response.status_code}: {get_response.text}")
-        
+            Log.error("BigID data source credentials request failed with "
+                + f"status code {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID data source credentials request failed"
+                + f" with status code {get_response.status_code}: {get_response.text}")
+
         get_response = get_response.json()
         return get_response
+    
+    def set_minimization_request_action(self, request_id: str, action_type: str):
+        self.validate_session_token()
+        url = f"{self.base_url}data-minimization/objects/action"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token
+        }
+        content = {
+            "query": {
+                "filter": [{
+                    "field": "requestId",
+                    "operator": "equal",
+                    "value": request_id
+                }]
+            },
+            "actionType": action_type,
+            "reason": "Thales BigID Anonimization API"
+        }
 
-        
-        
+        post_response = json_post_request(url, headers, content).json()
 
+        if post_response["statusCode"] != 200:
+            Log.error("BigID minimization action request failed with "
+                + f"status code {post_response['statusCode']}: {post_response['message']}")
+            raise BigIDAPIException("BigID minimization action request failed"
+                + f" with status code {post_response['statusCode']}: {post_response['message']}")
 
 
 if __name__ == "__main__":

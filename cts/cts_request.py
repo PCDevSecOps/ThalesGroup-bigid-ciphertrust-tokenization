@@ -1,13 +1,12 @@
-import requests
 import os
 import sys
+import json
 
-from requests.auth import HTTPBasicAuth
 from http.client import HTTPConnection
-from requests.adapters import HTTPAdapter, Retry
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.exceptions import CTSException     # noqa: E402
+from utils.utils import json_post_request
 
 
 class CTSRequest:
@@ -27,44 +26,33 @@ class CTSRequest:
             self.verify = cts_certificate_path
 
         HTTPConnection._http_vsn_str = "HTTP/1.1"
-    
+
     def make_request(self, content: str, method: str):
         url = self.base_url + method
         self.header["Content-Length"] = str(len(content))
-        with requests.Session() as s:
-            retries = Retry(total=3,
-                    backoff_factor=0.2,
-                    status_forcelist=[ 500, 502, 503, 504 ],
-                    raise_on_redirect=True)
-            s.mount('https://', HTTPAdapter(max_retries=retries))
-            response = s.post(
-                url,
-                auth=HTTPBasicAuth(str(self.cts_username), str(self.cts_password)),
-                verify=self.verify,
-                headers=self.header,
-                data=content,
-                timeout=5
-            )
-        
+        response = json_post_request(url, self.header, content, self.verify,
+            self.cts_username, self.cts_password)
+
         if response.status_code != 200:
-            raise CTSException(f"CTS Request failed with status code {response.status_code}: {response.text}")
+            raise CTSException("CTS Request failed with status code "
+                + f"{response.status_code}: {response.text}")
 
         return response.json()
-    
+
     def tokenize(self, values, tokengroup: str, tokentemplate: str):
-        base = '{{"tokengroup": "{tokengroup}", "data": "{val}", "tokentemplate": "{tokentemplate}"}}'
+        base = '{{"tokengroup": "{}", "data": "{}", "tokentemplate": "{}"}}'
         if isinstance(values, list):
             if len(values) == 0:
                 return values
-            content = [base.format(tokengroup=tokengroup, val=val_i, tokentemplate=tokentemplate) for val_i in values]
+            content = [base.format(tokengroup, val_i, tokentemplate) for val_i in values]
             content = "[" + ",".join(content) + "]"
         else:
             if len(values) == 0:
                 return [""]
-            content = "[" + base.format(tokengroup=tokengroup, val=values, tokentemplate=tokentemplate) + "]"
-        
-        response = self.make_request(content, "tokenize")
-        print(response)
+            content = "[" + base.format(tokengroup, values, tokentemplate) + "]"
+
+        response = self.make_request(json.loads(content), "tokenize")
+        # print(response)
         tokens = []
         for resp, val in zip(response, values):
             if resp["status"] == "error":

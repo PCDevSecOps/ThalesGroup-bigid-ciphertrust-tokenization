@@ -1,5 +1,5 @@
 class DBConnectionInterface:
-    def connect(self):
+    def _connect(self):
         raise NotImplementedError("Implement connect method")
 
     def test_connection(self):
