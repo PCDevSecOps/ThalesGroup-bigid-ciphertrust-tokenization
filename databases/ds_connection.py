@@ -1,5 +1,9 @@
+import hashlib
+
 from databases.mysql_conn import MySQLConnector
 from databases.oracle_conn import OracleConnector
+from Cryptodome.Cipher import AES
+from base64 import b64decode
 
 
 class DataSourceConnection:
@@ -16,19 +20,32 @@ class DataSourceConnection:
 
     def set_credentials(self, credentials: dict):
         self.credentials = credentials
-        print(credentials)
-
-    def get_username_password(self, encryption_key: str = None) -> list:
-        username, password = self.credentials["username"], self.credentials["password"]
+    
+    def get_username(self, encryption_key: str):
         if encryption_key is not None and self.credentials["username"]["encrypted"]:
-            username = self.decrypt(self.credentials["username"]["value"], encryption_key)
+            return self.decrypt(self.credentials["username"]["value"], encryption_key)
+        return self.credentials["username"]["value"]
+    
+    def get_password(self, encryption_key: str):
         if encryption_key is not None and self.credentials["password"]["encrypted"]:
-            password = self.decrypt(self.credentials["password"]["value"], encryption_key)
-        return [username, password]
+            return self.decrypt(self.credentials["password"]["value"], encryption_key)
+        return self.credentials["password"]["value"]
 
     @staticmethod
-    def decrypt(string: str, encryption_key: str) -> str:
-        return string
+    def decrypt(string: str, encryption_key: str):
+
+        def unpad(x):
+            return x[:-ord(x[len(x) - 1:])]
+        
+        private_key = hashlib.sha256()
+        private_key.update(encryption_key.encode('utf_8'))
+        private_key = private_key.digest()
+
+        iv, original = string.split("$", 1)
+        iv = b64decode(iv)
+        cipher_text = b64decode(original)
+        cipher = AES.new(private_key, AES.MODE_CBC, iv)
+        return unpad(cipher.decrypt(cipher_text)).decode("utf-8")
 
     def get_conn_param(self) -> list:
         """
@@ -49,7 +66,7 @@ class DataSourceConnection:
         hostname, port = self.rdb_url.split(":")
         port = int(port)
         database = self.rdb_name
-        return (MySQLConnector, [hostname, port, database])
+        return (MySQLConnector, hostname, port, database)
 
     def get_oracle_conn_params(self) -> list:
         """
@@ -58,5 +75,5 @@ class DataSourceConnection:
         hostname, port_sid = self.rdb_url.split(":")
         port, sid = port_sid.split("/")
         port = int(port)
-        return (OracleConnector, [hostname, port, sid])
+        return (OracleConnector, hostname, port, sid)
     

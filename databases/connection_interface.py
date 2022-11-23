@@ -1,9 +1,6 @@
 class DBConnectionInterface:
     def _connect(self):
         raise NotImplementedError("Implement connect method")
-
-    def test_connection(self):
-        raise NotImplementedError("Implement test_connection method")
     
     def get_update_query(self, schema: str, table_name: str, token: str, target_col: str,
                 target_col_val: str, unique_id_col: str, unique_id_val: str) -> str:

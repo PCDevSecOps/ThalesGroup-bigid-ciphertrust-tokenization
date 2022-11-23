@@ -1,11 +1,9 @@
 import os
-import sys
 import json
 
 from http.client import HTTPConnection
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.exceptions import CTSException     # noqa: E402
+from utils.exceptions import CTSException
 from utils.utils import json_post_request
 
 

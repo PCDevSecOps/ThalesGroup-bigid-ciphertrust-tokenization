@@ -1,6 +1,5 @@
 import configparser
 import requests
-import json
 
 from requests.adapters import HTTPAdapter, Retry
 from requests.auth import HTTPBasicAuth

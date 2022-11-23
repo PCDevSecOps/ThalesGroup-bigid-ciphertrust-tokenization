@@ -1,12 +1,9 @@
 import time
-import os
-import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.log import Log                         # noqa: E402
-from utils.exceptions import BigIDAPIException    # noqa: E402
+from utils.log import Log
+from utils.exceptions import BigIDAPIException
 from utils.utils import json_get_request, json_post_request, read_config_file, get_bigid_user_token
-from utils.ds_connection import DataSourceConnection
+from databases.ds_connection import DataSourceConnection
 
 
 class BigIDAPI:
@@ -59,15 +56,25 @@ class BigIDAPI:
                 + f" status code {get_response.status_code}: {get_response.text}")
 
         get_response = get_response.json()
-        min_requests = []
+        min_requests = {}
+        # each request = {"<requestId>": {"selected": [fobjn1, fobjn2, ...], "ids": [id1, id2, ...]}}
         for req in get_response["data"]["deleteQueries"]:
-            if req["state"] == "Pending":
-                database_name = req["scannerType"]
-                request_id = req["requestId"]
-                min_requests.append({
-                    "requestId": request_id,
-                    "database": database_name
-                })
+
+            if not (req["state"] == "Pending"
+                    and "markedAs" in req
+                    and req["markedAs"] == "Delete Manually"):
+                continue
+
+            request_id = req["requestId"]
+            full_obj_name = req["fullObjectName"]
+            obj_id = req["_id"]
+            if request_id in min_requests:
+                min_requests[request_id]["selected"].append(full_obj_name)
+                min_requests[request_id]["ids"].append(obj_id)
+            else:
+                min_requests[request_id] = {"selected": [full_obj_name]}
+                min_requests[request_id]["ids"] = [obj_id]
+
         self.minimization_requests = min_requests
         Log.info(f"Got {len(self.minimization_requests)} minimization requests from BigID")
 
@@ -133,7 +140,8 @@ class BigIDAPI:
         get_response = get_response.json()
         return get_response
     
-    def set_minimization_request_action(self, request_id: str, action_type: str):
+    def set_minimization_request_action(self, request_id: str, action_type: str,
+            secondary_ids = None):
         self.validate_session_token()
         url = f"{self.base_url}data-minimization/objects/action"
         headers = {
@@ -142,15 +150,27 @@ class BigIDAPI:
         }
         content = {
             "query": {
-                "filter": [{
-                    "field": "requestId",
-                    "operator": "equal",
-                    "value": request_id
-                }]
+                "filter": [
+                    {
+                        "field": "requestId",
+                        "operator": "equal",
+                        "value": request_id
+                    }
+                ]
             },
             "actionType": action_type,
             "reason": "Thales BigID Anonimization API"
         }
+
+        if isinstance(secondary_ids, str):
+            secondary_ids = [secondary_ids]
+
+        if secondary_ids:
+            content["query"]["filter"].append({
+                "field": "_id",
+                "operator": "in",
+                "value": secondary_ids
+            })
 
         post_response = json_post_request(url, headers, content).json()
 

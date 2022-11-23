@@ -1,12 +1,9 @@
 import oracledb
-import os
-import sys
 
+from databases.connection_interface import DBConnectionInterface
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.log import Log                                            # noqa: E402
-from databases.connection_interface import DBConnectionInterface     # noqa: E402
-from utils.exceptions import OracleConnectorException                # noqa: E402
+from utils.log import Log
+from utils.exceptions import OracleConnectorException
 
 
 class OracleConnector(DBConnectionInterface):
@@ -22,23 +19,6 @@ class OracleConnector(DBConnectionInterface):
 
         if self.test_connection():
             self._connect()
-
-    def test_connection(self):
-        try:
-            conn = oracledb.connect(user=self._username,
-                                    password=self._password,
-                                    dsn=f"{self._hostname}:{self._port}/{self._sid}")
-            cursor = conn.cursor()
-            cursor.execute("SELECT USER FROM DUAL")
-            cursor.close()
-            conn.close()
-            Log.info(f"Oracle test connection {self._username}@{self._hostname}"
-                + f":{self._port}/{self._sid} OK")
-            return True
-
-        except Exception as err:
-            Log.error(f"Error while testing connection to Oracle: {err}")
-            raise OracleConnectorException(err) from err
 
 
     def _connect(self):

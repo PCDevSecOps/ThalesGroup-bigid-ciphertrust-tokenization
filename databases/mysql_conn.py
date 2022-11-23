@@ -1,13 +1,11 @@
 import mysql.connector
-import os
-import sys
 
 from mysql.connector import Error
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.log import Log                                            # noqa: E402
-from databases.connection_interface import DBConnectionInterface     # noqa: E402
-from utils.exceptions import MySQLConnectorException                 # noqa: E402
+from databases.connection_interface import DBConnectionInterface
+
+from utils.log import Log
+from utils.exceptions import MySQLConnectorException
 
 
 class MySQLConnector(DBConnectionInterface):
@@ -21,30 +19,8 @@ class MySQLConnector(DBConnectionInterface):
 
         self.is_connected = False
 
-        if self.test_connection():
-            self._connect()
+        self._connect()
 
-    def test_connection(self):
-        try:
-            connection = mysql.connector.connect(host=self._hostname,
-                                                 port=self._port,
-                                                 database=self._database,
-                                                 user=self._username,
-                                                 password=self._password,
-                                                 connection_timeout=5)
-            if connection.is_connected():
-                cursor = connection.cursor()
-                cursor.execute("select database();")
-                _ = cursor.fetchone()
-                Log.info(f"MySQL test connection {self._username}@"
-                    + f"{self._hostname}:{self._port}/{self._database} OK")
-                cursor.close()
-                connection.close()
-                return True
-
-        except Error as err:
-            Log.error(f"Error while testing connection to MySQL: {err}")
-            raise MySQLConnectorException(err) from err
 
     def _connect(self):
         try:
