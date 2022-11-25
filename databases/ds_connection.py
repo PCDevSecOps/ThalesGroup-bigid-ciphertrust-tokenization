@@ -21,19 +21,22 @@ class DataSourceConnection:
     def set_credentials(self, credentials: dict):
         self.credentials = credentials
     
-    def get_username(self, encryption_key: str):
+    def get_username(self, encryption_key: str) -> str:
         if encryption_key is not None and self.credentials["username"]["encrypted"]:
             return self.decrypt(self.credentials["username"]["value"], encryption_key)
         return self.credentials["username"]["value"]
     
-    def get_password(self, encryption_key: str):
+    def get_password(self, encryption_key: str) -> str:
         if encryption_key is not None and self.credentials["password"]["encrypted"]:
             return self.decrypt(self.credentials["password"]["value"], encryption_key)
         return self.credentials["password"]["value"]
 
     @staticmethod
-    def decrypt(string: str, encryption_key: str):
-
+    def decrypt(string: str, encryption_key: str) -> str:
+        """
+        Decrypts the AES encrypted password given the encryption key
+        and the iv, given the input string is in the form <iv>$<cipher>
+        """
         def unpad(x):
             return x[:-ord(x[len(x) - 1:])]
         

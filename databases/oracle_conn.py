@@ -1,7 +1,8 @@
 import oracledb
 
-from databases.connection_interface import DBConnectionInterface
+from typing import Union
 
+from databases.connection_interface import DBConnectionInterface
 from utils.log import Log
 from utils.exceptions import OracleConnectorException
 
@@ -17,8 +18,7 @@ class OracleConnector(DBConnectionInterface):
 
         self.is_connected = False
 
-        if self.test_connection():
-            self._connect()
+        self._connect()
 
 
     def _connect(self):
@@ -41,8 +41,8 @@ class OracleConnector(DBConnectionInterface):
             try:
                 cursor = self._conn.cursor()
                 cursor.execute(query)
-                for row in cursor:
-                    print(row)
+                # for row in cursor:
+                #     print(row)
                 self._conn.commit()
                 cursor.close()
 
@@ -52,18 +52,31 @@ class OracleConnector(DBConnectionInterface):
         else:
             Log.warn("Oracle connection is not established. Will not execute query")
 
-    def get_update_query(self, schema: str, table_name: str, token: str, target_col: str,
-                target_col_val: str, unique_id_col: str, unique_id_val: str):
+    def get_update_query(self, schema: str, table_name: str, token: Union[str, list],
+            target_col: Union[str, list], target_col_val: Union[str, list],
+            unique_id_col: str, unique_id_val: str):
+
+        if isinstance(token, list) and isinstance(target_col, list)\
+                and isinstance(target_col_val, list):
+            set_str = ",".join(f"{target} = '{val}'" for target, val in zip(target_col, token))
+            where_str = " AND ".join(f"{target} = '{original_val}'" for target,
+                original_val in zip(target_col, target_col_val))
+        else:
+            set_str = f"{target_col} = '{token}'"
+            where_str = f"{target_col} = '{target_col_val}'"
+
         query = f"""
-            UPDATE {schema}.{table_name}
-            SET {target_col} = '{token}'
-            WHERE {target_col} = '{target_col_val}' AND {unique_id_col} = '{unique_id_val}'
+            UPDATE {schema}.{table_name} SET
+            {set_str}
+            WHERE {where_str} AND {unique_id_col} = '{unique_id_val}'
         """
         return query
     
     def close_connection(self):
         if self.is_connected:
             self._conn.close()
+            Log.info(f"Oracle closed connection {self._username}@"
+                + f"{self._hostname}:{self._port}/{self._sid}")
 
 
 if __name__ == "__main__":

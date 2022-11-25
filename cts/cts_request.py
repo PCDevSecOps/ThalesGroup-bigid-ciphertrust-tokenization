@@ -2,6 +2,7 @@ import os
 import json
 
 from http.client import HTTPConnection
+from typing import Union
 
 from utils.exceptions import CTSException
 from utils.utils import json_post_request
@@ -9,9 +10,8 @@ from utils.utils import json_post_request
 
 class CTSRequest:
     def __init__(self, cts_hostname: str, cts_username: str,
-                cts_password: str, cts_certificate_path: str, n_retry: int = 3):
+                cts_password: str, cts_certificate_path: str):
         self.base_url = "https://" + cts_hostname + "/vts/rest/v2.0/"
-        self.n_retry = n_retry
         self.cts_username = cts_username
         self.cts_password = cts_password
         self.header = {
@@ -25,7 +25,7 @@ class CTSRequest:
 
         HTTPConnection._http_vsn_str = "HTTP/1.1"
 
-    def make_request(self, content: str, method: str):
+    def make_request(self, content: str, method: str) -> Union[list, dict]:
         url = self.base_url + method
         self.header["Content-Length"] = str(len(content))
         response = json_post_request(url, self.header, content, self.verify,
@@ -37,9 +37,11 @@ class CTSRequest:
 
         return response.json()
 
-    def tokenize(self, values, tokengroup: str, tokentemplate: str):
+    def tokenize(self, values: Union[str, list], tokengroup: str, tokentemplate: str) -> list:
         base = '{{"tokengroup": "{}", "data": "{}", "tokentemplate": "{}"}}'
-        if isinstance(values, list):
+        if values is None:
+            return None
+        elif isinstance(values, list):
             if len(values) == 0:
                 return values
             content = [base.format(tokengroup, val_i, tokentemplate) for val_i in values]
@@ -50,15 +52,13 @@ class CTSRequest:
             content = "[" + base.format(tokengroup, values, tokentemplate) + "]"
 
         response = self.make_request(json.loads(content), "tokenize")
-        # print(response)
         tokens = []
         for resp, val in zip(response, values):
             if resp["status"] == "error":
-                if resp["reason"].startswith("After accounting for keepleft"):
+                if resp["reason"].startswith("After accounting for keepleft") or val is None:
                     tokens.append(val)
                     continue
-                else:
-                    raise CTSException(resp["reason"])
+                raise CTSException(resp["reason"])
             tokens.append(resp["token"])
 
         return tokens

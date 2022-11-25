@@ -1,9 +1,9 @@
 import mysql.connector
 
 from mysql.connector import Error
+from typing import Union
 
 from databases.connection_interface import DBConnectionInterface
-
 from utils.log import Log
 from utils.exceptions import MySQLConnectorException
 
@@ -59,12 +59,23 @@ class MySQLConnector(DBConnectionInterface):
         else:
             Log.warn("MySQL connection is not established. Will not execute query")
 
-    def get_update_query(self, schema: str, table_name: str, token: str, target_col: str,
-                target_col_val: str, unique_id_col: str, unique_id_val: str):
+    def get_update_query(self, schema: str, table_name: str, token: Union[str, list],
+            target_col: Union[str, list], target_col_val: Union[str, list],
+            unique_id_col: str, unique_id_val: str):
+
+        if isinstance(token, list) and isinstance(target_col, list)\
+                and isinstance(target_col_val, list):
+            set_str = ",".join(f"{target} = '{val}'" for target, val in zip(target_col, token))
+            where_str = " AND ".join(f"{target} = '{original_val}'" for target,
+                original_val in zip(target_col, target_col_val))
+        else:
+            set_str = f"{target_col} = '{token}'"
+            where_str = f"{target_col} = '{target_col_val}'"
+
         query = f"""
-            UPDATE {schema}.{table_name}
-            SET {target_col} = '{token}'
-            WHERE {target_col} = '{target_col_val}' AND {unique_id_col} = '{unique_id_val}'
+            UPDATE {schema}.{table_name} SET
+            {set_str}
+            WHERE {where_str} AND {unique_id_col} = '{unique_id_val}'
         """
         return query
 

@@ -1,20 +1,20 @@
-import configparser
 import requests
 
+from configparser import RawConfigParser
 from requests.adapters import HTTPAdapter, Retry
 from requests.auth import HTTPBasicAuth
 from utils.log import Log
 from typing import Union
 
 
-def read_config_file(config_path):
-    config = configparser.RawConfigParser()
+def read_config_file(config_path: str) -> RawConfigParser:
+    config = RawConfigParser()
     config.read(config_path, encoding="utf-8")
     Log.info("Reading from configuration file: OK")
     return config
 
 
-def get_bigid_user_token(path: str):
+def get_bigid_user_token(path: str) -> str:
     token = ""
     with open(path, "r", encoding="utf-8") as f:
         for line in f.readlines():
@@ -23,7 +23,7 @@ def get_bigid_user_token(path: str):
     return token
 
 
-def json_get_request(url: str, header: dict):
+def json_get_request(url: str, header: dict) -> requests.Response:
     with requests.Session() as s:
         retries = Retry(total=3,
                 backoff_factor=0.2,
@@ -41,7 +41,7 @@ def json_get_request(url: str, header: dict):
 
 
 def json_post_request(url: str, header: dict, content: dict, verify: Union[bool, str] = False,
-        username: str = None, password: str = None):
+        username: str = None, password: str = None) -> requests.Response:
 
     auth = None
     if username and password:
@@ -65,7 +65,7 @@ def json_post_request(url: str, header: dict, content: dict, verify: Union[bool,
     return response
 
 
-def get_unique_id_record(records: list):
+def get_unique_id_record(records: list) -> dict:
     unique_record = list(filter(lambda x: x["identity_unique_id"] == x["value"], records))
     if unique_record:
         return unique_record[0]

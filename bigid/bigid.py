@@ -1,5 +1,7 @@
 import time
 
+from configparser import RawConfigParser
+
 from utils.log import Log
 from utils.exceptions import BigIDAPIException
 from utils.utils import json_get_request, json_post_request, read_config_file, get_bigid_user_token
@@ -7,7 +9,7 @@ from databases.ds_connection import DataSourceConnection
 
 
 class BigIDAPI:
-    def __init__(self, config, base_url: str):
+    def __init__(self, config: RawConfigParser, base_url: str):
         self._config     = config
         self._user_token = get_bigid_user_token(self._config["BigID"]["user_token_path"])
         self.base_url    = base_url
@@ -28,7 +30,7 @@ class BigIDAPI:
         get_response = json_get_request(token_url, headers)
 
         if get_response.status_code != 200:
-            Log.error(f"BigID session token HTTP {get_response.status_code}")
+            Log.error(f"BigID session token HTTP {get_response.status_code}: {get_response.text}")
             raise BigIDAPIException("BigID access token request failed "
                 + f"with status code {get_response.status_code}: {get_response.text}")
 
@@ -78,10 +80,10 @@ class BigIDAPI:
         self.minimization_requests = min_requests
         Log.info(f"Got {len(self.minimization_requests)} minimization requests from BigID")
 
-    def get_minimization_requests(self):
+    def get_minimization_requests(self) -> list:
         return self.minimization_requests
 
-    def get_sar_report(self, request_id: str):
+    def get_sar_report(self, request_id: str) -> list:
         self.validate_session_token()
 
         sar_url = f"{self.base_url}sar/reports/{request_id}"
@@ -101,7 +103,7 @@ class BigIDAPI:
         Log.info(f"Got sar report from BigID for {request_id=}")
         return get_response["records"]
 
-    def get_data_source_conn_from_source_name(self, data_source_name: str):
+    def get_data_source_conn_from_source_name(self, data_source_name: str) -> DataSourceConnection:
         self.validate_session_token()
         url = f"{self.base_url}ds_connections/{data_source_name}"
         headers = {
@@ -122,7 +124,7 @@ class BigIDAPI:
         conn_type = get_response["ds_connection"]["type"]
         return DataSourceConnection(rdb_url, conn_type, rdb_name)
 
-    def get_data_source_credentials(self, tpa_id: str, data_source_name: str):
+    def get_data_source_credentials(self, tpa_id: str, data_source_name: str) -> dict:
         self.validate_session_token()
         url = f"{self.base_url}tpa/{tpa_id}/credentials/{data_source_name}"
         headers = {

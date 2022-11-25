@@ -1,7 +1,10 @@
 from itertools import groupby
+from configparser import RawConfigParser
+from typing import Union
 
 from bigid.bigid import BigIDAPI
 from cts.cts_request import CTSRequest
+from databases.ds_connection import DataSourceConnection
 from utils.log import Log
 from utils.utils import (get_bigid_user_token, get_unique_id_record,
                          read_config_file)
@@ -14,7 +17,7 @@ class AppService:
         self.bigid_user_token = get_bigid_user_token(self.config["BigID"]["user_token_path"])
         Log.info("AppService Initialized")
 
-    def data_anonimization(self, post_args: dict = None):
+    def data_anonimization(self, post_args: dict):
         action_params = post_args["actionParams"]
         params = {i["paramName"]: i["paramValue"] for i in action_params}
         tpa_id = post_args["tpaId"]
@@ -29,7 +32,8 @@ class AppService:
         # CTS
         cts_hostname = self.config["CTS"]["hostname"]
         cts_cert_path = self.config["CTS"]["certificate"]
-        cts = CTSRequest(cts_hostname, params["CTSUsername"], params["CTSPassword"], cts_cert_path)
+        cts = CTSRequest(cts_hostname, params["CTSUsername"], params["CTSPassword"],
+            cts_cert_path)
         Log.info("CTSRequest initialized")
 
 
@@ -46,42 +50,56 @@ class AppService:
             for source_name, grouped_records in groupby(records, lambda x: x["source"]):
                 Log.info(f"Initiating the anonimization for the data source {source_name}")
                 ds_conn_getter = bigid.get_data_source_conn_from_source_name(source_name)
-                ds_conn_getter.set_credentials(bigid.get_data_source_credentials(tpa_id, source_name))
-                connect_ds_anonimize(ds_conn_getter, cts, list(grouped_records), params, self.config)
+                ds_conn_getter.set_credentials(
+                    bigid.get_data_source_credentials(tpa_id, source_name))
+                connect_ds_anonimize(ds_conn_getter, cts, list(grouped_records),
+                    params, self.config)
 
             for del_id in del_info["ids"]:
-                bigid.set_minimization_request_action(request_id, "Completion Delete Manually", del_id)
+                bigid.set_minimization_request_action(request_id,
+                    "Completion Delete Manually", del_id)
 
 
-def read_categories(categories_raw: str):
-    categories = [cat.strip() for cat in categories_raw.split(",")]
-    return categories
+def read_categories(categories_raw: str) -> list:
+    if categories_raw.strip():
+        categories = [cat.strip() for cat in categories_raw.strip().split(",")]
+        return categories
+    return []
 
 
 def category_allowed(categories_found: list, categories_allowed: list) -> bool:
     if len(categories_allowed) == 0:
         return True
-    for cat_f in categories_found:
-        if cat_f in categories_allowed:
-            return True
-    return False
+    return any(map(lambda x: x in categories_allowed, categories_found))
 
 
-def update_table(record: dict, unique_id_record: dict,
-        source_conn, token: str):
-    target_col            = record["attr_original_name"]
-    target_col_val        = record["value"]
-    full_object_name      = record["fullObjectName"]
-    _, schema, table_name = full_object_name.split(".")
+def update_table(records: Union[list, str], unique_id_record: dict,
+        source_conn, tokens: Union[list, str]):
+    """
+    Generates and runs the update query.
+    If the arguments are lists, all fields will anonimized in a single query
+    """
+    if isinstance(tokens, list) and isinstance(records, list):
+        target_cols           = [rec["attr_original_name"] for rec in records]
+        target_col_vals       = [rec["value"] for rec in records]
+        full_object_name      = records[0]["fullObjectName"]
+        _, schema, table_name = full_object_name.split(".")
+    else:
+        target_cols           = records["attr_original_name"]
+        target_col_vals       = records["value"]
+        full_object_name      = records["fullObjectName"]
+        _, schema, table_name = full_object_name.split(".")
 
-    update_query = source_conn.get_update_query(schema, table_name, token,
-        target_col, target_col_val, unique_id_record["attr_original_name"],
+    update_query = source_conn.get_update_query(schema, table_name, tokens,
+        target_cols, target_col_vals, unique_id_record["attr_original_name"],
         unique_id_record["value"])
 
     source_conn.run_query(update_query)
 
 
-def connect_ds_anonimize(ds_conn_getter, cts: CTSRequest, grouped_records: list, params: dict, config):
+def connect_ds_anonimize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
+        grouped_records: list, params: dict, config: RawConfigParser):
+
     # Data source connection
     connector_class, host, port, db = ds_conn_getter.get_conn_param()
     source_conn = connector_class(host, port, db,
@@ -120,8 +138,7 @@ def connect_ds_anonimize(ds_conn_getter, cts: CTSRequest, grouped_records: list,
             Log.info("Data tokenized successfully")
 
             Log.info("Updating data with tokens...")
-            for token, rec in zip(tokens, remaining_records):
-                update_table(rec, unique_id_record, source_conn, token)
+            update_table(remaining_records, unique_id_record, source_conn, tokens)
             Log.info("Updating data with tokens OK")
 
             if category_allowed(unique_id_record["category"], categories):
