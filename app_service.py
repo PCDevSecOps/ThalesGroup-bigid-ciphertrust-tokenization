@@ -111,17 +111,20 @@ def connect_ds_anonimize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
 
     try:
         # Group by proximityId/Line
-        for proximity_id, records_groupby_table in groupby(grouped_records,
+        for proximity_id, records_groupby_table in groupby(list(grouped_records),
                 lambda x: x["proximityId"]):
+
             Log.info(f"Starting anonimization for {proximity_id=}")
 
+            proximity_group = list(records_groupby_table)
+
             # Find unique_id
-            unique_id_record = get_unique_id_record(records_groupby_table)
+            unique_id_record = get_unique_id_record(proximity_group)
             unique_id_col_name = None
             if unique_id_record is not None:
                 unique_id_col_name = unique_id_record["attr_original_name"]
+                Log.info(f"Unique ID column: {unique_id_col_name}")
             else:
-                # Unique_id / primary key not found. Skipping to avoid wrong update statements
                 Log.info(f"{proximity_id=} does not have a unique_id or primary "
                     + "key. Skipping anonimization to avoid wrong data replacements")
                 continue
@@ -129,17 +132,18 @@ def connect_ds_anonimize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
             # Filter all records that are not primary key or unique id
             filt = lambda x: x["attr_original_name"] != unique_id_col_name and x["value"] \
                     and category_allowed(x["category"], categories) and x["is_primary"] == "FALSE"
-            remaining_records = list(filter(filt, grouped_records))
+            remaining_records = list(filter(filt, proximity_group))
             Log.info(f"Found {len(remaining_records)} records for anonimization, "
                 + "except unique identifier")
+            
+            if len(remaining_records) > 0:
+                values = [rec["value"] for rec in remaining_records]
+                tokens = cts.tokenize(values, params["CTSTokengroup"], params["CTSTokentemplate"])
+                Log.info("Data tokenized successfully")
 
-            values = [rec["value"] for rec in remaining_records]
-            tokens = cts.tokenize(values, params["CTSTokengroup"], params["CTSTokentemplate"])
-            Log.info("Data tokenized successfully")
-
-            Log.info("Updating data with tokens...")
-            update_table(remaining_records, unique_id_record, source_conn, tokens)
-            Log.info("Updating data with tokens OK")
+                Log.info("Updating data with tokens...")
+                update_table(remaining_records, unique_id_record, source_conn, tokens)
+                Log.info("Updating data with tokens OK")
 
             if category_allowed(unique_id_record["category"], categories):
                 Log.info("Unique identifier is selected for anonimization")

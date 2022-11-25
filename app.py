@@ -37,10 +37,12 @@ def get_sidebar_icon():
 
 @app.route("/api/logs", methods=["GET"])
 def logs():
-    with open("log.txt", "r", encoding="utf-8") as logfile:
-        log = logfile.read()
+    try:
+        with open("log.txt", "r", encoding="utf-8") as logfile:
+            log = logfile.read()
+    except FileNotFoundError:
+        log = "File log.txt does not exist"
     return log
-
 
 @app.route("/api/execute", methods=["POST"])
 def execute():
