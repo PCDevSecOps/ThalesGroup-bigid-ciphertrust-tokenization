@@ -1,11 +1,6 @@
-FROM python:3.7
+FROM tiangolo/uwsgi-nginx-flask:python3.8
 
-WORKDIR /opt/app
+RUN apt update && apt install -y bash
 
-COPY . .
-
-RUN pip install --no-cache-dir -r python-requirements.txt
-
-EXPOSE 5000
-
-CMD ["python3", "-m", "app", "--host", "0.0.0.0", "--port", "5000"]
+COPY python-requirements.txt /tmp/python-requirements.txt
+RUN pip install --no-cache-dir -r /tmp/python-requirements.txt

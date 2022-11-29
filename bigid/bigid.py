@@ -12,17 +12,17 @@ class BigIDAPI:
     def __init__(self, config: RawConfigParser, base_url: str):
         self._config     = config
         self._user_token = get_bigid_user_token(self._config["BigID"]["user_token_path"])
-        self.base_url    = base_url
+        self._base_url    = base_url
         self._access_token_h_duration = 23     # Access token duration in hours
 
         self._access_token_time        = None
         self._access_token             = None
-        self.minimization_requests     = []
+        self._minimization_requests    = []
 
         self._update_session_token()
 
     def _update_session_token(self):
-        token_url = f"{self.base_url}refresh-access-token"
+        token_url = f"{self._base_url}refresh-access-token"
         headers = {
             "Accept": "application/json",
             "Authorization": self._user_token
@@ -44,7 +44,7 @@ class BigIDAPI:
 
     def update_minimization_requests(self):
         self.validate_session_token()
-        url = f"{self.base_url}data-minimization/objects"
+        url = f"{self._base_url}data-minimization/objects"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token
@@ -77,16 +77,16 @@ class BigIDAPI:
                 min_requests[request_id] = {"selected": [full_obj_name]}
                 min_requests[request_id]["ids"] = [obj_id]
 
-        self.minimization_requests = min_requests
-        Log.info(f"Got {len(self.minimization_requests)} minimization requests from BigID")
+        self._minimization_requests = min_requests
+        Log.info(f"Got {len(self._minimization_requests)} minimization requests from BigID")
 
     def get_minimization_requests(self) -> list:
-        return self.minimization_requests
+        return self._minimization_requests
 
     def get_sar_report(self, request_id: str) -> list:
         self.validate_session_token()
 
-        sar_url = f"{self.base_url}sar/reports/{request_id}"
+        sar_url = f"{self._base_url}sar/reports/{request_id}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token
@@ -105,7 +105,7 @@ class BigIDAPI:
 
     def get_data_source_conn_from_source_name(self, data_source_name: str) -> DataSourceConnection:
         self.validate_session_token()
-        url = f"{self.base_url}ds_connections/{data_source_name}"
+        url = f"{self._base_url}ds_connections/{data_source_name}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token
@@ -126,7 +126,7 @@ class BigIDAPI:
 
     def get_data_source_credentials(self, tpa_id: str, data_source_name: str) -> dict:
         self.validate_session_token()
-        url = f"{self.base_url}tpa/{tpa_id}/credentials/{data_source_name}"
+        url = f"{self._base_url}tpa/{tpa_id}/credentials/{data_source_name}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token
@@ -145,7 +145,7 @@ class BigIDAPI:
     def set_minimization_request_action(self, request_id: str, action_type: str,
             secondary_ids = None):
         self.validate_session_token()
-        url = f"{self.base_url}data-minimization/objects/action"
+        url = f"{self._base_url}data-minimization/objects/action"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token

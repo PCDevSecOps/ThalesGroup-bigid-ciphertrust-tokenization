@@ -1,7 +1,7 @@
 from flask import Flask, request
 
 from app_service import AppService
-from waitress import serve
+# from waitress import serve
 
 import json
 import argparse

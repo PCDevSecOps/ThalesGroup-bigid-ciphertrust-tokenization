@@ -10,26 +10,26 @@ from utils.utils import json_post_request
 
 class CTSRequest:
     def __init__(self, cts_hostname: str, cts_username: str,
-                cts_password: str, cts_certificate_path: str):
-        self.base_url = "https://" + cts_hostname + "/vts/rest/v2.0/"
-        self.cts_username = cts_username
-        self.cts_password = cts_password
-        self.header = {
+                cts_password: str, cts_certificate_path: str = None):
+        self._base_url = "https://" + cts_hostname + "/vts/rest/v2.0/"
+        self._cts_username = cts_username
+        self._cts_password = cts_password
+        self._header = {
 		    "user-agent": "mozilla/4.0",
 		    "v_content-type": "application/json",
 		    "Content-Length": 0
 	    }
-        self.verify = False
-        if os.path.exists(cts_certificate_path):
-            self.verify = cts_certificate_path
+        self._verify = False
+        if cts_certificate_path and os.path.exists(cts_certificate_path):
+            self._verify = cts_certificate_path
 
         HTTPConnection._http_vsn_str = "HTTP/1.1"
 
-    def make_request(self, content: str, method: str) -> Union[list, dict]:
-        url = self.base_url + method
-        self.header["Content-Length"] = str(len(content))
-        response = json_post_request(url, self.header, content, self.verify,
-            self.cts_username, self.cts_password)
+    def _make_request(self, content: str, method: str) -> Union[list, dict]:
+        url = self._base_url + method
+        self._header["Content-Length"] = str(len(content))
+        response = json_post_request(url, self._header, content, self._verify,
+            self._cts_username, self._cts_password)
 
         if response.status_code != 200:
             raise CTSException("CTS Request failed with status code "
@@ -51,7 +51,7 @@ class CTSRequest:
                 return [""]
             content = "[" + base.format(tokengroup, values, tokentemplate) + "]"
 
-        response = self.make_request(json.loads(content), "tokenize")
+        response = self._make_request(json.loads(content), "tokenize")
         tokens = []
         for resp, val in zip(response, values):
             if resp["status"] == "error":

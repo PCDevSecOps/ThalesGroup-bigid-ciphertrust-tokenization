@@ -13,23 +13,23 @@ class DataSourceConnection:
     key given in the config.ini file.
     """
     def __init__(self, rdb_url: str, rdb_type: str, rdb_name: str):
-        self.rdb_url  = rdb_url
-        self.rdb_type = rdb_type
-        self.rdb_name = rdb_name
-        self.credentials = None
+        self._rdb_url     = rdb_url
+        self._rdb_type    = rdb_type
+        self._rdb_name    = rdb_name
+        self._credentials = None
 
     def set_credentials(self, credentials: dict):
-        self.credentials = credentials
+        self._credentials = credentials
     
     def get_username(self, encryption_key: str) -> str:
-        if encryption_key is not None and self.credentials["username"]["encrypted"]:
-            return self.decrypt(self.credentials["username"]["value"], encryption_key)
-        return self.credentials["username"]["value"]
+        if encryption_key is not None and self._credentials["username"]["encrypted"]:
+            return self.decrypt(self._credentials["username"]["value"], encryption_key)
+        return self._credentials["username"]["value"]
     
     def get_password(self, encryption_key: str) -> str:
-        if encryption_key is not None and self.credentials["password"]["encrypted"]:
-            return self.decrypt(self.credentials["password"]["value"], encryption_key)
-        return self.credentials["password"]["value"]
+        if encryption_key is not None and self._credentials["password"]["encrypted"]:
+            return self.decrypt(self._credentials["password"]["value"], encryption_key)
+        return self._credentials["password"]["value"]
 
     @staticmethod
     def decrypt(string: str, encryption_key: str) -> str:
@@ -54,28 +54,28 @@ class DataSourceConnection:
         """
         Returns the correct Data Source Connector based on the rdb_type
         """
-        if self.rdb_type == "rdb-mysql":
-            return self.get_mysql_conn_params()
-        elif self.rdb_type == "rdb-oracle":
-            return self.get_oracle_conn_params()
+        if self._rdb_type == "rdb-mysql":
+            return self._get_mysql_conn_params()
+        elif self._rdb_type == "rdb-oracle":
+            return self._get_oracle_conn_params()
         else:
             raise NotImplementedError("DataSourceConnection does not"
-                + f"support {self.rdb_type} yet. Implement it!")
+                + f"support {self._rdb_type} yet. Implement it!")
 
-    def get_mysql_conn_params(self) -> list:
+    def _get_mysql_conn_params(self) -> list:
         """
         MySQL URL format: <IP|hostname>:<port>
         """
-        hostname, port = self.rdb_url.split(":")
+        hostname, port = self._rdb_url.split(":")
         port = int(port)
-        database = self.rdb_name
+        database = self._rdb_name
         return (MySQLConnector, hostname, port, database)
 
-    def get_oracle_conn_params(self) -> list:
+    def _get_oracle_conn_params(self) -> list:
         """
         Oracle URL format: <IP|hostname>:<port>/<SID>
         """
-        hostname, port_sid = self.rdb_url.split(":")
+        hostname, port_sid = self._rdb_url.split(":")
         port, sid = port_sid.split("/")
         port = int(port)
         return (OracleConnector, hostname, port, sid)
