@@ -161,7 +161,7 @@ class BigIDAPI:
                 ]
             },
             "actionType": action_type,
-            "reason": "Thales BigID Anonimization API"
+            "reason": "Thales BigID Anonymization API"
         }
 
         if isinstance(secondary_ids, str):

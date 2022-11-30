@@ -6,18 +6,17 @@ from bigid.bigid import BigIDAPI
 from cts.cts_request import CTSRequest
 from databases.ds_connection import DataSourceConnection
 from utils.log import Log
-from utils.utils import (get_bigid_user_token, get_unique_id_record,
-                         read_config_file)
+import utils.utils as ut
 
 
 class AppService:
 
     def __init__(self):
-        self.config = read_config_file("config.ini")
-        self.bigid_user_token = get_bigid_user_token(self.config["BigID"]["user_token_path"])
+        self.config = ut.read_config_file("config.ini")
+        self.bigid_user_token = ut.get_bigid_user_token(self.config["BigID"]["user_token_path"])
         Log.info("AppService Initialized")
 
-    def data_anonimization(self, post_args: dict):
+    def data_anonymization(self, post_args: dict):
         action_params = post_args["actionParams"]
         params = {i["paramName"]: i["paramValue"] for i in action_params}
         tpa_id = post_args["tpaId"]
@@ -48,11 +47,11 @@ class AppService:
 
             # Group by data source
             for source_name, grouped_records in groupby(records, lambda x: x["source"]):
-                Log.info(f"Initiating the anonimization for the data source {source_name}")
+                Log.info(f"Initiating the anonymization for the data source {source_name}")
                 ds_conn_getter = bigid.get_data_source_conn_from_source_name(source_name)
                 ds_conn_getter.set_credentials(
                     bigid.get_data_source_credentials(tpa_id, source_name))
-                connect_ds_anonimize(ds_conn_getter, cts, list(grouped_records),
+                connect_ds_anonymize(ds_conn_getter, cts, list(grouped_records),
                     params, self.config)
 
             for del_id in del_info["ids"]:
@@ -60,24 +59,11 @@ class AppService:
                     "Completion Delete Manually", del_id)
 
 
-def read_categories(categories_raw: str) -> list:
-    if categories_raw.strip():
-        categories = [cat.strip() for cat in categories_raw.strip().split(",")]
-        return categories
-    return []
-
-
-def category_allowed(categories_found: list, categories_allowed: list) -> bool:
-    if len(categories_allowed) == 0:
-        return True
-    return any(map(lambda x: x in categories_allowed, categories_found))
-
-
 def update_table(records: Union[list, str], unique_id_record: dict,
         source_conn, tokens: Union[list, str]):
     """
     Generates and runs the update query.
-    If the arguments are lists, all fields will anonimized in a single query
+    If the arguments are lists, all fields will anonymized in a single query
     """
     if isinstance(tokens, list) and isinstance(records, list):
         target_cols           = [rec["attr_original_name"] for rec in records]
@@ -97,7 +83,7 @@ def update_table(records: Union[list, str], unique_id_record: dict,
     source_conn.run_query(update_query)
 
 
-def connect_ds_anonimize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
+def connect_ds_anonymize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
         grouped_records: list, params: dict, config: RawConfigParser):
 
     # Data source connection
@@ -106,34 +92,34 @@ def connect_ds_anonimize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
         ds_conn_getter.get_username(config["BigID"]["encryption_key"]),
         ds_conn_getter.get_password(config["BigID"]["encryption_key"]))
 
-    categories = read_categories(params["Categories"])
-    Log.info(f"Categories that will be anonimized: {categories}")
+    categories = ut.read_categories(params["Categories"])
+    Log.info(f"Categories that will be anonymized: {categories}")
 
     try:
         # Group by proximityId/Line
         for proximity_id, records_groupby_table in groupby(list(grouped_records),
                 lambda x: x["proximityId"]):
 
-            Log.info(f"Starting anonimization for {proximity_id=}")
+            Log.info(f"Starting anonymization for {proximity_id=}")
 
             proximity_group = list(records_groupby_table)
 
             # Find unique_id
-            unique_id_record = get_unique_id_record(proximity_group)
+            unique_id_record = ut.get_unique_id_record(proximity_group)
             unique_id_col_name = None
             if unique_id_record is not None:
                 unique_id_col_name = unique_id_record["attr_original_name"]
                 Log.info(f"Unique ID column: {unique_id_col_name}")
             else:
                 Log.info(f"{proximity_id=} does not have a unique_id or primary "
-                    + "key. Skipping anonimization to avoid wrong data replacements")
+                    + "key. Skipping anonymization to avoid wrong data replacements")
                 continue
 
             # Filter all records that are not primary key or unique id
             filt = lambda x: x["attr_original_name"] != unique_id_col_name and x["value"] \
-                    and category_allowed(x["category"], categories) and x["is_primary"] == "FALSE"
+                    and ut.category_allowed(x["category"], categories) and x["is_primary"] == "FALSE"
             remaining_records = list(filter(filt, proximity_group))
-            Log.info(f"Found {len(remaining_records)} records for anonimization, "
+            Log.info(f"Found {len(remaining_records)} records for anonymization, "
                 + "except unique identifier")
             
             if len(remaining_records) > 0:
@@ -145,15 +131,15 @@ def connect_ds_anonimize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
                 update_table(remaining_records, unique_id_record, source_conn, tokens)
                 Log.info("Updating data with tokens OK")
 
-            if category_allowed(unique_id_record["category"], categories):
-                Log.info("Unique identifier is selected for anonimization")
+            if ut.category_allowed(unique_id_record["category"], categories):
+                Log.info("Unique identifier is selected for anonymization")
                 token = cts.tokenize(unique_id_record["value"], params["CTSTokengroup"],
                     params["CTSTokentemplate"])[0]
                 update_table(unique_id_record, unique_id_record, source_conn, token)
-                Log.info("Unique identifier anonimized")
+                Log.info("Unique identifier anonymized")
 
     except Exception as err:
-        Log.error(f"Exception found in connect_ds_anonimize: {err}")
+        Log.error(f"Exception found in connect_ds_anonymize: {err}")
         source_conn.close_connection()
         raise err
 

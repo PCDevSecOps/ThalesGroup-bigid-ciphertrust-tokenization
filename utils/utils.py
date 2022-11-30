@@ -75,3 +75,16 @@ def get_unique_id_record(records: list) -> dict:
     if pkey_record:
         return pkey_record[0]
     return None
+
+
+def read_categories(categories_raw: str) -> set:
+    if categories_raw.strip():
+        categories = set(cat.strip() for cat in categories_raw.strip().split(","))
+        return categories
+    return set()
+
+
+def category_allowed(categories_found: list, categories_allowed: Union[list, set]) -> bool:
+    if len(categories_allowed) == 0:
+        return True
+    return any(map(lambda x: x in categories_allowed, categories_found))

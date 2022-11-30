@@ -54,9 +54,9 @@ def execute():
     }
 
     action_name = arguments["actionName"]
-    if action_name == "Anonimize":
+    if action_name == "Anonymize":
         try:
-            app_service.data_anonimization(arguments)
+            app_service.data_anonymization(arguments)
             json_response["statusEnum"] = "COMPLETED"
             json_response["progress"] = 1
             json_response["message"] = f"Completed action {action_name} successfully"
@@ -76,7 +76,7 @@ def execute():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description = "Thales <> BigID Flask API for data anonimization"
+        description = "Thales <> BigID Flask API for data anonymization"
     )
     parser.add_argument("--host", action = 'store', dest = 'host',
                         default = "0.0.0.0", required = False,
