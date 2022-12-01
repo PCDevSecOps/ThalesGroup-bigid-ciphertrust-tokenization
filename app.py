@@ -2,6 +2,7 @@ from flask import Flask, request
 
 from app_service import AppService
 # from waitress import serve
+from utils.log import create_log_file
 
 import json
 import argparse
@@ -46,6 +47,7 @@ def logs():
 
 @app.route("/api/execute", methods=["POST"])
 def execute():
+    create_log_file()
     app_service = AppService()
     arguments = request.json
 

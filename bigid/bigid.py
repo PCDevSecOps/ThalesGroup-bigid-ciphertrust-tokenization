@@ -4,16 +4,17 @@ from configparser import RawConfigParser
 
 from utils.log import Log
 from utils.exceptions import BigIDAPIException
-from utils.utils import json_get_request, json_post_request, read_config_file, get_bigid_user_token
+import utils.utils as ut
 from databases.ds_connection import DataSourceConnection
 
 
 class BigIDAPI:
     def __init__(self, config: RawConfigParser, base_url: str):
         self._config     = config
-        self._user_token = get_bigid_user_token(self._config["BigID"]["user_token_path"])
+        self._user_token = ut.get_bigid_user_token(self._config["BigID"]["user_token_path"])
         self._base_url    = base_url
         self._access_token_h_duration = 23     # Access token duration in hours
+        self._proxies = ut.get_proxy_from_config(self._config)
 
         self._access_token_time        = None
         self._access_token             = None
@@ -27,7 +28,7 @@ class BigIDAPI:
             "Accept": "application/json",
             "Authorization": self._user_token
         }
-        get_response = json_get_request(token_url, headers)
+        get_response = ut.json_get_request(token_url, headers, self._proxies)
 
         if get_response.status_code != 200:
             Log.error(f"BigID session token HTTP {get_response.status_code}: {get_response.text}")
@@ -49,7 +50,7 @@ class BigIDAPI:
             "Accept": "application/json",
             "Authorization": self._access_token
         }
-        get_response = json_get_request(url, headers)
+        get_response = ut.json_get_request(url, headers, self._proxies)
 
         if get_response.status_code != 200:
             Log.error("BigID minimization request failed with status code "
@@ -91,7 +92,7 @@ class BigIDAPI:
             "Accept": "application/json",
             "Authorization": self._access_token
         }
-        get_response = json_get_request(sar_url, headers)
+        get_response = ut.json_get_request(sar_url, headers, self._proxies)
 
         if get_response.status_code != 200:
             Log.error("BigID sar report failed with status code "
@@ -110,7 +111,7 @@ class BigIDAPI:
             "Accept": "application/json",
             "Authorization": self._access_token
         }
-        get_response = json_get_request(url, headers)
+        get_response = ut.json_get_request(url, headers, self._proxies)
 
         if get_response.status_code != 200:
             Log.error("BigID data source request failed with status code"
@@ -131,7 +132,7 @@ class BigIDAPI:
             "Accept": "application/json",
             "Authorization": self._access_token
         }
-        get_response = json_get_request(url, headers)
+        get_response = ut.json_get_request(url, headers, self._proxies)
 
         if get_response.status_code != 200:
             Log.error("BigID data source credentials request failed with "
@@ -174,7 +175,7 @@ class BigIDAPI:
                 "value": secondary_ids
             })
 
-        post_response = json_post_request(url, headers, content).json()
+        post_response = ut.json_post_request(url, headers, content, self._proxies).json()
 
         if post_response["statusCode"] != 200:
             Log.error("BigID minimization action request failed with "
@@ -184,7 +185,7 @@ class BigIDAPI:
 
 
 if __name__ == "__main__":
-    config = read_config_file("config.ini")
+    config = ut.read_config_file("config.ini")
     a = BigIDAPI(config, "https://192.168.0.115/api/v1/")
     a.update_minimization_requests()
     print(a.get_minimization_requests())

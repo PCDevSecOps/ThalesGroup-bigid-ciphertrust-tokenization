@@ -58,17 +58,17 @@ class OracleConnector(DBConnectionInterface):
 
         if isinstance(token, list) and isinstance(target_col, list)\
                 and isinstance(target_col_val, list):
-            set_str = ",".join(f"{target} = '{val}'" for target, val in zip(target_col, token))
-            where_str = " AND ".join(f"{target} = '{original_val}'" for target,
+            set_str = ",".join(f"\"{target}\" = '{val}'" for target, val in zip(target_col, token))
+            where_str = " AND ".join(f"\"{target}\" = '{original_val}'" for target,
                 original_val in zip(target_col, target_col_val))
         else:
-            set_str = f"{target_col} = '{token}'"
-            where_str = f"{target_col} = '{target_col_val}'"
+            set_str = f"\"{target_col}\" = '{token}'"
+            where_str = f"\"{target_col}\" = '{target_col_val}'"
 
         query = f"""
             UPDATE {schema}.{table_name} SET
             {set_str}
-            WHERE {where_str} AND {unique_id_col} = '{unique_id_val}'
+            WHERE {where_str} AND \"{unique_id_col}\" = '{unique_id_val}'
         """
         return query
     

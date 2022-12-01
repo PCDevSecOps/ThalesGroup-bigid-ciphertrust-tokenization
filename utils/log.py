@@ -5,6 +5,16 @@ import os
 debug = True
 
 
+def create_log_file(logfile_name = "log.txt"):
+    if not os.path.exists(logfile_name):
+        with open(logfile_name, "w") as _: 
+            pass
+    
+    status = os.stat(logfile_name)
+    if oct(status.st_mode)[-3:] != "666":
+        os.chmod(logfile_name, 0o666)
+
+
 def write_to_file(mode: str, message: str, filename: str):
     """
     Formats the log string and writes it to the log.txt file.

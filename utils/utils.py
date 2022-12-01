@@ -23,8 +23,11 @@ def get_bigid_user_token(path: str) -> str:
     return token
 
 
-def json_get_request(url: str, header: dict) -> requests.Response:
+def json_get_request(url: str, header: dict, proxies: dict = None) -> requests.Response:
     with requests.Session() as s:
+        if not proxies:
+            s.trust_env = False
+
         retries = Retry(total=3,
                 backoff_factor=0.2,
                 status_forcelist=[ 500, 502, 503, 504 ],
@@ -33,6 +36,7 @@ def json_get_request(url: str, header: dict) -> requests.Response:
         response = s.get(
             url,
             verify=False,
+            proxies=proxies,
             headers=header,
             timeout=5
         )
@@ -40,14 +44,17 @@ def json_get_request(url: str, header: dict) -> requests.Response:
     return response
 
 
-def json_post_request(url: str, header: dict, content: dict, verify: Union[bool, str] = False,
-        username: str = None, password: str = None) -> requests.Response:
+def json_post_request(url: str, header: dict, content: dict, proxies: dict = None,
+        verify: Union[bool, str] = False, username: str = None,
+        password: str = None) -> requests.Response:
 
     auth = None
     if username and password:
         auth = HTTPBasicAuth(username, password)
 
     with requests.Session() as s:
+        if not proxies:
+            s.trust_env = False
         retries = Retry(total=3,
                 backoff_factor=0.2,
                 status_forcelist=[ 500, 502, 503, 504 ],
@@ -57,6 +64,7 @@ def json_post_request(url: str, header: dict, content: dict, verify: Union[bool,
             url,
             auth=auth,
             verify=verify,
+            proxies=proxies,
             headers=header,
             json=content,
             timeout=5
@@ -88,3 +96,8 @@ def category_allowed(categories_found: list, categories_allowed: Union[list, set
     if len(categories_allowed) == 0:
         return True
     return any(map(lambda x: x in categories_allowed, categories_found))
+
+
+def get_proxy_from_config(config: RawConfigParser):
+    cfgproxy = config["Proxy"]
+    return {key: cfgproxy[key] for key in cfgproxy if cfgproxy[key]}

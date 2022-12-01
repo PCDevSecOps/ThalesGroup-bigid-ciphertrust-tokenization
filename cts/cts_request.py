@@ -20,7 +20,7 @@ class CTSRequest:
 		    "Content-Length": 0
 	    }
         self._verify = False
-        if cts_certificate_path and os.path.exists(cts_certificate_path):
+        if cts_certificate_path != '' and os.path.isfile(cts_certificate_path):
             self._verify = cts_certificate_path
 
         HTTPConnection._http_vsn_str = "HTTP/1.1"
@@ -28,8 +28,8 @@ class CTSRequest:
     def _make_request(self, content: str, method: str) -> Union[list, dict]:
         url = self._base_url + method
         self._header["Content-Length"] = str(len(content))
-        response = json_post_request(url, self._header, content, self._verify,
-            self._cts_username, self._cts_password)
+        response = json_post_request(url, self._header, content, proxies=None, verify=self._verify,
+            username=self._cts_username, password=self._cts_password)
 
         if response.status_code != 200:
             raise CTSException("CTS Request failed with status code "
