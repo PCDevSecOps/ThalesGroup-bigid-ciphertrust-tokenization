@@ -1,7 +1,6 @@
 from flask import Flask, request
 
 from app_service import AppService
-# from waitress import serve
 from utils.log import create_log_file
 
 import json
@@ -87,7 +86,5 @@ if __name__ == "__main__":
                         default = "5000", required = False,
                         help = "API port")
     args = parser.parse_args()
-    # app.run(host=args.host, port=args.port)  # Uncomment to flask run
-    app.run(host="192.168.0.107", port=5000)
-    # serve(app, host=args.host, port=args.port)  # Waitress
-    # serve(app, host="192.168.0.107", port=5000)
+    app.run(host=args.host, port=args.port)  # Uncomment to flask run
+

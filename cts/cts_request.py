@@ -63,15 +63,3 @@ class CTSRequest:
 
         return tokens
 
-
-
-def main():
-    req = CTSRequest("cts", "test", "Thales123!", "cts.pem")
-    print(req.tokenize(["testeval1234121", "12", "123876n182", "123onxasbb"], "tokenization_group", "alphanum"))
-    # print(req.tokenize("testeval1234121", "tokenization_group", "alphanum"))
-    # print(req.tokenize("", "tokenization_group", "alphanum"))
-
-
-if __name__ == "__main__":
-    main()
-

@@ -85,12 +85,3 @@ class MySQLConnector(DBConnectionInterface):
             Log.info(f"MySQL closed connection {self._username}@"
                 + f"{self._hostname}:{self._port}/{self._database}")
 
-
-if __name__ == "__main__":
-    mysql_conn = MySQLConnector("192.168.0.108", 3306, "TokenizationDemo", "test", "Thales123!")
-    mysql_conn.run_query("SELECT SSN FROM sample_data WHERE FNAME = 'Huntley'")
-    # mysql_conn.run_query("""UPDATE TokenizationDemo.Data100k
-    #   SET CARDNUMBERNUM = 'CC-IjZf329mm0qO4593'
-    #   WHERE CARDNUMBERNUM = '4456643983384593' AND CPF = '646.103.270-31'
-    # """)
-    mysql_conn.close_connection()

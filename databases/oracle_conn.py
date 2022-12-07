@@ -78,9 +78,3 @@ class OracleConnector(DBConnectionInterface):
             Log.info(f"Oracle closed connection {self._username}@"
                 + f"{self._hostname}:{self._port}/{self._sid}")
 
-
-if __name__ == "__main__":
-    o = OracleConnector("192.168.132.19", 1521, "tokendb", "token_user", "token_user")
-    o.run_query("SELECT * FROM SAMPLE_DATA WHERE ID = 1")
-    o.close_connection()
-

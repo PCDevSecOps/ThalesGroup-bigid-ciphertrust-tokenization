@@ -2,8 +2,6 @@ import datetime
 import inspect
 import os
 
-debug = True
-
 
 def create_log_file(logfile_name = "log.txt"):
     if not os.path.exists(logfile_name):
@@ -25,9 +23,6 @@ def write_to_file(mode: str, message: str, filename: str):
 
     fname = f" [{filename}]" if filename else ""
     formatted = f"[{now}] {mode}{fname} - {message}\n"
-
-    if debug:
-        print(formatted)
 
     with open(os.path.join(log_path, "log.txt"), "a", encoding="utf-8") as f:
         f.write(formatted)

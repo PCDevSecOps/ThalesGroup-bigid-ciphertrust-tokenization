@@ -54,9 +54,8 @@ class AppService:
                 connect_ds_anonymize(ds_conn_getter, cts, list(grouped_records),
                     params, self.config)
 
-            for del_id in del_info["ids"]:
-                bigid.set_minimization_request_action(request_id,
-                    "Completion Delete Manually", del_id)
+            bigid.set_minimization_request_action(request_id,
+                "Completion Delete Manually", del_info["ids"])
 
 
 def update_table(records: Union[list, str], unique_id_record: dict,
@@ -145,6 +144,3 @@ def connect_ds_anonymize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
 
     source_conn.close_connection()
 
-
-if __name__ == "__main__":
-    app = AppService()

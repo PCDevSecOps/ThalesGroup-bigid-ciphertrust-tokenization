@@ -1,10 +1,11 @@
 import time
 
 from configparser import RawConfigParser
+from typing import Union
 
+import utils.utils as ut
 from utils.log import Log
 from utils.exceptions import BigIDAPIException
-import utils.utils as ut
 from databases.ds_connection import DataSourceConnection
 
 
@@ -144,7 +145,7 @@ class BigIDAPI:
         return get_response
     
     def set_minimization_request_action(self, request_id: str, action_type: str,
-            secondary_ids = None):
+            secondary_ids: Union[str, list] = None):
         self.validate_session_token()
         url = f"{self._base_url}data-minimization/objects/action"
         headers = {
@@ -183,26 +184,3 @@ class BigIDAPI:
             raise BigIDAPIException("BigID minimization action request failed"
                 + f" with status code {post_response['statusCode']}: {post_response['message']}")
 
-
-if __name__ == "__main__":
-    config = ut.read_config_file("config.ini")
-    a = BigIDAPI(config, "https://192.168.0.115/api/v1/")
-    a.update_minimization_requests()
-    print(a.get_minimization_requests())
-    print(a.get_sar_report("6363b7905c59b7c0f545662e"))
-    # print(config.sections())
-    # print(dict(config["CTS"]))
-    # for sec in config.sections():
-    #     for key in config[sec]:
-    #         print(f"[{sec}].{key} = {config[sec][key]}")
-    
-    # token_url = f"https://{config['BigID']['hostname']}/api/v1/refresh-access-token"
-    # headers = {
-    #     "Accept": "application/json",
-    #     "Authorization": get_bigid_user_token("bigid_user_token.txt")
-    # }
-    # print(json_get_request(token_url, headers).text)
-    # import os
-    # print(os.path.basename(__file__))
-    # Log.info("Testing log without filename")
-    # Log.info("Testing log with filename", os.path.basename(__file__))
