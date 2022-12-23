@@ -126,6 +126,180 @@ class BigIDAPI:
         conn_type = get_response["ds_connection"]["type"]
         return DataSourceConnection(rdb_url, conn_type, rdb_name)
 
+    def get_all_data_sources(self, enabled: Union[bool, None] = None) -> list:
+        """
+        Returns all data sources available. If enabled is None, all are returned.
+        If enabled is False, returns all disabled. If enabled is True, returns
+        all enabled.
+        """
+        self.validate_session_token()
+        url = f"{self._base_url}ds_connections"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token
+        }
+        get_response = ut.json_get_request(url, headers, self._proxies)
+
+        if get_response.status_code != 200:
+            Log.error("BigID data source list request failed with "
+                + f"status code {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID data source list request failed"
+                + f" with status code {get_response.status_code}: {get_response.text}")
+
+        get_response = get_response.json()["ds_connections"]
+        if enabled is None:
+            return get_response
+        elif enabled:
+            return list(filter(lambda x: x["enabled"] == "yes", get_response))
+        else:
+            return list(filter(lambda x: x["enabled"] == "no", get_response))
+
+    def get_data_sources_policy_hit(self) -> list:
+        self.validate_session_token()
+        url = f"{self._base_url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/datasource/auditor-datasource"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        get_response = ut.json_get_request(url, headers, self._proxies)
+
+        if get_response.status_code != 200:
+            Log.error("BigID policy hit data source list request failed with "
+                + f"status code {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID policy hit data source list request failed"
+                + f" with status code {get_response.status_code}: {get_response.text}")
+
+        get_response = get_response.json()["results"]
+        return list(filter(lambda x: len(x["policyHit"]) > 0, get_response))
+
+    def get_all_remediation_objects(self) -> list:
+        self.validate_session_token()
+        url = f"{self._base_url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        get_response = ut.json_get_request(url, headers, self._proxies)
+
+        if get_response.status_code != 200:
+            Log.error("BigID policy hit data source list request failed with "
+                + f"status code {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID policy hit data source list request failed"
+                + f" with status code {get_response.status_code}: {get_response.text}")
+
+        return get_response.json()["results"]
+
+    def get_remediation_objects_by_source(self, source_name: str) -> list:
+        """
+        Gets remediation objects as they are seen when you click 
+        """
+        self.validate_session_token()
+
+        if self._base_url.endswith("/api/v1/"):
+            url = self._base_url[:-7]
+        else:
+            url = self._base_url
+
+        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1",
+            "filterV2": f'[{{"value": ["{source_name}"], "field": "source", "operator": "in"}}]'
+        }
+        get_response = ut.json_get_request(url, headers, self._proxies)
+
+        if get_response.status_code != 200:
+            Log.error("BigID remediation objects request failed with "
+                + f"status code {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID remediation objects request failed"
+                + f" with status code {get_response.status_code}: {get_response.text}")
+
+        return get_response.json()["results"]
+
+    def get_remediation_objects_by_source_columns(self, source_name: str) -> list:
+        """
+        Gets remediation objects as they are seen when you click columns option
+        Information and IDs are differente from the method above, thats why
+        I'm doing both requests and joining the results with full qualified name
+        """
+        self.validate_session_token()
+
+        if self._base_url.endswith("/api/v1/"):
+            url = self._base_url[:-7]
+        else:
+            url = self._base_url
+
+        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/columns-view?source={source_name}"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        get_response = ut.json_get_request(url, headers, self._proxies)
+
+        if get_response.status_code != 200:
+            Log.error("BigID remediation objects col request failed with "
+                + f"status code {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID remediation objects col request failed"
+                + f" with status code {get_response.status_code}: {get_response.text}")
+
+        return get_response.json()["results"]
+
+    def get_object_comments(self, obj_id: str) -> list:
+        self.validate_session_token()
+
+        if self._base_url.endswith("/api/v1/"):
+            url = self._base_url[:-7]
+        else:
+            url = self._base_url
+
+        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/comment?annotation_id={obj_id}"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        get_response = ut.json_get_request(url, headers, self._proxies)
+
+        if get_response.status_code != 200:
+            Log.error("BigID object comments request failed with "
+                + f"status code {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID object comments request failed"
+                + f" with status code {get_response.status_code}: {get_response.text}")
+
+        return get_response.json()
+
+    def get_object_tags(self, object_name: str) -> list:
+        """
+        Object name is the fully qualified name
+        """
+        self.validate_session_token()
+
+        if self._base_url.endswith("/api/v1/"):
+            url = self._base_url[:-7]
+        else:
+            url = self._base_url
+
+        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/object-detail?object_name={object_name}"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        get_response = ut.json_get_request(url, headers, self._proxies)
+        tags = get_response.json()["basicDetails"]["tags"]
+
+        if get_response.status_code != 200:
+            Log.error("BigID object tags request failed with "
+                + f"status code {get_response.status_code}: {get_response.text}")
+            raise BigIDAPIException("BigID object tags request failed"
+                + f" with status code {get_response.status_code}: {get_response.text}")
+
+        return tags
+
     def get_data_source_credentials(self, tpa_id: str, data_source_name: str) -> dict:
         self.validate_session_token()
         url = f"{self._base_url}tpa/{tpa_id}/credentials/{data_source_name}"

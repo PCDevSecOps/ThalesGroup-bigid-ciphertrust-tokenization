@@ -41,23 +41,34 @@ class MySQLConnector(DBConnectionInterface):
             self.is_connected = False
             raise MySQLConnectorException(err) from err
 
-    def run_query(self, query: str):
-        if self.is_connected:
-            try:
-                if self._connection.is_connected():
-                    cursor = self._connection.cursor(buffered=True)
-                    cursor.execute(query)
-                    # record = cursor.fetchall() # update queries only -> no data to fetch
-                    # print(record)
-                    Log.info("MySQL Query execution OK")
-                    self._connection.commit()
-                    cursor.close()
+    def run_query(self, query: str, fetch_results: bool = False, is_multiple: bool = False,
+            params_mult: list = None):
+        try:
+            if self._connection.is_connected():
+                cursor = self._connection.cursor(buffered=True)
 
-            except Error as err:
-                Log.error(f"Error while executing MySQL query: {err}")
-                raise MySQLConnectorException(err) from err
-        else:
-            Log.warn("MySQL connection is not established. Will not execute query")
+                if is_multiple:
+                    cursor.executemany(query, params_mult)
+                else:
+                    cursor.execute(query)
+
+                rows = cursor.fetchall() if fetch_results else None
+                Log.info("MySQL Query execution OK")
+                self._connection.commit()
+                cursor.close()
+                if rows:
+                    return rows
+
+        except Error as err:
+            Log.error(f"Error while executing MySQL query: {err}")
+            raise MySQLConnectorException(err) from err
+
+    def get_primary_keys(self, table_name: str, schema: str = None):
+        source = f"{schema}.{table_name}" if schema else table_name
+        query = f"""
+            SHOW KEYS FROM {source} WHERE Key_name = 'PRIMARY'
+        """
+        return self.run_query(query, fetch_results = True)
 
     def get_update_query(self, schema: str, table_name: str, token: Union[str, list],
             target_col: Union[str, list], target_col_val: Union[str, list],
@@ -78,6 +89,18 @@ class MySQLConnector(DBConnectionInterface):
             WHERE {where_str} AND {unique_id_col} = '{unique_id_val}'
         """
         return query
+    
+    def get_batch(self, table_name: str, primary_key: str, column: str, offset: int,
+            fetch_next: int, schema: str = None) -> list:
+        source = f"{schema}.{table_name}" if schema else table_name
+        query = f"""
+            SELECT {primary_key}, {column}
+            FROM {source}
+            ORDER BY {primary_key}
+            LIMIT {fetch_next} OFFSET {offset}
+        """
+        return self.run_query(query, fetch_results=True)
+
 
     def close_connection(self):
         if self.is_connected and self._connection.is_connected():

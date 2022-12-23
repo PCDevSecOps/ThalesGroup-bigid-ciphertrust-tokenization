@@ -47,30 +47,38 @@ def logs():
 @app.route("/api/execute", methods=["POST"])
 def execute():
     create_log_file()
+
     app_service = AppService()
     arguments = request.json
+    app_service.initialize_from_post_params(arguments)
 
     json_response = {
         "executionId": arguments["executionId"],
+        "statusEnum": "ERROR",
+        "progress": 0.5
     }
 
     action_name = arguments["actionName"]
-    if action_name == "Anonymize":
-        try:
-            app_service.data_anonymization(arguments)
+    try:
+        if action_name == "Anonymize":
+            app_service.data_anonymization()
             json_response["statusEnum"] = "COMPLETED"
             json_response["progress"] = 1
             json_response["message"] = f"Completed action {action_name} successfully"
-        except Exception as err:
-            json_response["statusEnum"] = "ERROR"
-            json_response["progress"] = 0.5
+        
+        elif action_name == "Remediate":
+            app_service.data_remediation()
+            json_response["statusEnum"] = "COMPLETED"
+            json_response["progress"] = 1
+            json_response["message"] = f"Completed action {action_name} successfully"
+
+        else:
+            json_response["message"] =  f"No such action: {action_name}"
+        
+
+    except Exception as err:
             json_response["message"] = "Error - attempt to execute action "\
                 + f"{action_name} failed: {err}"
-
-    else:
-        json_response["statusEnum"] = "ERROR"
-        json_response["progress"] = 0.5
-        json_response["message"] =  f"No such action: {action_name}"
 
     return json.dumps(json_response)
 

@@ -50,6 +50,13 @@ class DataSourceConnection:
         cipher = AES.new(private_key, AES.MODE_CBC, iv)
         return unpad(cipher.decrypt(cipher_text)).decode("utf-8")
 
+    @staticmethod
+    def get_all_implemented_connector_types():
+        return [
+            "rdb-mysql",
+            "rdb-oracle"
+        ]
+
     def get_conn_param(self) -> list:
         """
         Returns the correct Data Source Connector based on the rdb_type

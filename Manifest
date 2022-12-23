@@ -58,6 +58,58 @@
           "is_mandatory": true
         }
       ]
+    },
+    {
+      "action_id": "Remediate",
+      "description": "Tokenizes columns in data sources that have violated a BigID policy",
+      "is_sync": true,
+      "action_params": [
+        {
+          "param_name": "CTSUsername",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "The CTS user that will perform the anonymization",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSPassword",
+          "param_type": "String",
+          "is_cleartext": false,
+          "param_description": "CTS user's password",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSTokengroup",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "CTS Tokenization Group",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSTokentemplate",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "CTS Tokenization Template",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "BatchSize",
+          "param_type": "Int",
+          "is_cleartext": true,
+          "param_description": "Tokenization batch size",
+          "default_value": 100,
+          "param_priority": "primary",
+          "is_mandatory": true
+        }
+      ]
     }
   ],
   "permissions": [

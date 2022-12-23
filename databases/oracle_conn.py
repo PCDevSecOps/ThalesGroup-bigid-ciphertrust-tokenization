@@ -36,21 +36,59 @@ class OracleConnector(DBConnectionInterface):
             self.is_connected = False
             raise OracleConnectorException(err) from err
 
-    def run_query(self, query: str):
+    def run_query_old(self, query: str, fetch_results: bool = False):
         if self.is_connected:
             try:
                 cursor = self._conn.cursor()
                 cursor.execute(query)
-                # for row in cursor:
-                #     print(row)
+                rows = cursor.fetchall() if fetch_results else None
                 self._conn.commit()
                 cursor.close()
+                if rows:
+                    return rows
 
             except Exception as err:
                 Log.error(f"Error while executing Oracle query: {err}")
                 raise OracleConnectorException(err) from err
         else:
             Log.warn("Oracle connection is not established. Will not execute query")
+
+    def run_query(self, query: str, fetch_results: bool = False, is_multiple: bool = False,
+            params_mult: list = None):
+        if self.is_connected:
+            try:
+                cursor = self._conn.cursor()
+
+                if is_multiple:
+                    cursor.executemany(query, params_mult)
+                else:
+                    cursor.execute(query)
+
+                rows = cursor.fetchall() if fetch_results else None
+                Log.info("Oracle Query execution OK")
+                self._conn.commit()
+                cursor.close()
+                if rows:
+                    return rows
+
+            except Exception as err:
+                Log.error(f"Error while executing MySQL query: {err}")
+                raise Exception(err) from err
+        else:
+            Log.warn("Oracle connection is not established. Will not execute query")
+
+    def get_primary_keys(self, table_name: str, schema: str = None):
+        source = f"{schema.upper()}.{table_name.upper()}" if schema else table_name.upper()
+        query = f"""
+            SELECT cols.table_name, cols.column_name, cols.position, cons.status, cons.owner
+            FROM all_constraints cons, all_cons_columns cols
+            WHERE cols.table_name = '{source}'
+            AND cons.constraint_type = 'P'
+            AND cons.constraint_name = cols.constraint_name
+            AND cons.owner = cols.owner
+            ORDER BY cols.table_name, cols.position
+        """
+        return self.run_query(query, fetch_results = True)
 
     def get_update_query(self, schema: str, table_name: str, token: Union[str, list],
             target_col: Union[str, list], target_col_val: Union[str, list],
@@ -71,6 +109,17 @@ class OracleConnector(DBConnectionInterface):
             WHERE {where_str} AND \"{unique_id_col}\" = '{unique_id_val}'
         """
         return query
+    
+    def get_batch(self, table_name: str, primary_key: str, column: str, offset: int,
+            fetch_next: int, schema: str = None) -> list:
+        source = f"{schema.upper()}.{table_name.upper()}" if schema else table_name.upper()
+        query = f"""
+            SELECT {primary_key}, {column}
+            FROM {source}
+            ORDER BY {primary_key}
+            OFFSET {offset} ROWS FETCH NEXT {fetch_next} ROWS ONLY;
+        """
+        return self.run_query(query, fetch_results=True)
     
     def close_connection(self):
         if self.is_connected:
