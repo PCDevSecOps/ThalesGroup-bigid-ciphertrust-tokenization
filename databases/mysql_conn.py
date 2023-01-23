@@ -63,12 +63,15 @@ class MySQLConnector(DBConnectionInterface):
             Log.error(f"Error while executing MySQL query: {err}")
             raise MySQLConnectorException(err) from err
 
-    def get_primary_keys(self, table_name: str, schema: str = None):
+    def get_primary_keys(self, table_name: str, schema: str = None) -> list:
         source = f"{schema}.{table_name}" if schema else table_name
         query = f"""
             SHOW KEYS FROM {source} WHERE Key_name = 'PRIMARY'
         """
-        return self.run_query(query, fetch_results = True)
+        pkey_list = self.run_query(query, fetch_results = True)
+        if pkey_list:
+            return [pk[4] for pk in pkey_list]
+        return []
 
     def get_update_query(self, schema: str, table_name: str, token: Union[str, list],
             target_col: Union[str, list], target_col_val: Union[str, list],

@@ -88,7 +88,10 @@ class OracleConnector(DBConnectionInterface):
             AND cons.owner = cols.owner
             ORDER BY cols.table_name, cols.position
         """
-        return self.run_query(query, fetch_results = True)
+        pkey_list = self.run_query(query, fetch_results = True)
+        if pkey_list:
+            return [pk[1] for pk in pkey_list]
+        return []
 
     def get_update_query(self, schema: str, table_name: str, token: Union[str, list],
             target_col: Union[str, list], target_col_val: Union[str, list],

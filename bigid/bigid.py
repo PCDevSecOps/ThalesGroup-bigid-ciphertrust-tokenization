@@ -300,6 +300,143 @@ class BigIDAPI:
 
         return tags
 
+    def create_main_tag(self, tag_name: str, tag_description: str = "") -> str:
+        """
+        Make sure the tag does not exist before running. Will return the new tag's
+        _id property.
+        """
+        self.validate_session_token()
+
+        if self._base_url.endswith("/api/v1/"):
+            url = self._base_url[:-7]
+        else:
+            url = self._base_url
+
+        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/tags/create-tag"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        content = {
+            "name": tag_name,
+            "type": "TAG",
+            "description": tag_description
+        }
+        post_response = ut.json_post_request(url, headers, content, self._proxies)
+
+        if post_response.status_code != 200:
+            Log.error("BigID create main tag request failed with "
+                + f"status code {post_response.status_code}")
+            raise BigIDAPIException("BigID create main tag request failed"
+                + f" with status code {post_response.status_code}")
+
+        post_response = post_response.json()
+        return post_response["_id"]
+
+    def create_sub_tag(self, subtag_name: str, parent_id: str,
+            subtag_description: str = "") -> tuple:
+        """
+        Make sure the tag does not exist before running. Will return the new subtag's
+        _id property and the parent id.
+        """
+        self.validate_session_token()
+
+        if self._base_url.endswith("/api/v1/"):
+            url = self._base_url[:-7]
+        else:
+            url = self._base_url
+
+        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/tags/create-tag"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        content = {
+            "name": subtag_name,
+            "type": "VALUE",
+            "description": subtag_description,
+            "parentId": parent_id
+        }
+        post_response = ut.json_post_request(url, headers, content, self._proxies)
+
+        if post_response.status_code != 200:
+            Log.error("BigID create subtag request failed with "
+                + f"status code {post_response.status_code}")
+            raise BigIDAPIException("BigID create subtag request failed"
+                + f" with status code {post_response.status_code}")
+
+        post_response = post_response.json()
+        return (post_response["_id"], post_response["parent_id"])
+
+    def add_tag(self, fully_qual_name: str, source_name: str, tag_id: str,
+            value_id: str) -> str:
+        """
+        tag_id is the parent id returned by the create_subtag method
+        value_id is the _id returned by create_main_tag
+        """
+        self.validate_session_token()
+
+        if self._base_url.endswith("/api/v1/"):
+            url = self._base_url[:-7]
+        else:
+            url = self._base_url
+
+        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/tags/add-tags"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        content = {
+            "data": [
+                {
+                    "type": "OBJECT",
+                    "fullyQualifiedName": fully_qual_name,
+                    "source": source_name,
+                    "tags": [
+                        {
+                            "tagId": tag_id,
+                            "valueId": value_id
+                        }
+                    ]
+                }
+            ]
+        }
+        post_response = ut.json_post_request(url, headers, content, self._proxies)
+
+        if post_response.status_code != 200:
+            Log.error("BigID add tags request failed with "
+                + f"status code {post_response.status_code}")
+            raise BigIDAPIException("BigID add tags request failed"
+                + f" with status code {post_response.status_code}")
+
+    def add_comment(self, comment: str, annotation_id: str):
+        self.validate_session_token()
+
+        if self._base_url.endswith("/api/v1/"):
+            url = self._base_url[:-7]
+        else:
+            url = self._base_url
+
+        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/comment?annotation_id={annotation_id}"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": self._access_token,
+            "Accept-version": "v1"
+        }
+        content = {
+            "comment": comment
+        }
+        post_response = ut.json_post_request(url, headers, content, self._proxies)
+
+        if post_response.status_code != 200:
+            Log.error("BigID submit comment request failed with "
+                + f"status code {post_response.status_code}")
+            raise BigIDAPIException("BigID submit comment request failed"
+                + f" with status code {post_response.status_code}")
+
     def get_data_source_credentials(self, tpa_id: str, data_source_name: str) -> dict:
         self.validate_session_token()
         url = f"{self._base_url}tpa/{tpa_id}/credentials/{data_source_name}"

@@ -1,5 +1,6 @@
 import math
 import re
+import datetime
 
 from configparser import RawConfigParser
 
@@ -38,7 +39,7 @@ def run_data_remediation(cts: CTSRequest, bigid: BigIDAPI, config: RawConfigPars
 
         # Filter those that have "Thales Tokenization" in actions taken
         remed_objs_col = list(filter(
-            lambda x: x["annotations"]["actionTaken"] == "Thales Tokenization", remed_objs))
+            lambda x: x["annotations"]["actionTaken"] == "Thales Tokenization", remed_objs_col))
 
         # 5. For every policy hit, search in the comments if the database
         # has been tokenized
@@ -47,12 +48,13 @@ def run_data_remediation(cts: CTSRequest, bigid: BigIDAPI, config: RawConfigPars
             obj_full_qual_name = col_obj["fully_qualified_name"]
             non_col_obj = list(filter(lambda x: x["fullyQualifiedName"] == obj_full_qual_name, remed_objs))[0]
 
-            id_for_comment = non_col_obj["id"]
-            comments = bigid.get_object_comments(id_for_comment)
+            annotation_id = non_col_obj["id"]
+            comments = bigid.get_object_comments(annotation_id)
             tokenized_columns = get_tokenized_cols_from_comments(comments)
-            # table_size = non_col_obj["total_pii_count"]
-            # table_size = col_obj["annotations"]["findings"]
+
             # Run query to get table size
+            _, schema, table_name = obj_full_qual_name.split(".")
+            table_size = get_nlines(source_conn, f"{schema}.{table_name}")
 
             full_object_name      = non_col_obj["fullObjectName"]
             schema, table_name = full_object_name.split(".")
@@ -61,34 +63,54 @@ def run_data_remediation(cts: CTSRequest, bigid: BigIDAPI, config: RawConfigPars
             if len(pkeys) == 0:
                 Log.warn(f"No primary keys found in {ds_name} - {obj_full_qual_name}. Skipping...")
                 continue
-            pkey_names = [i[1] for i in pkeys]
 
             for col_hit_name in col_obj["annotations"]["policyHit"]:
                 if col_hit_name in tokenized_columns:
                     Log.info(f"Column {col_hit_name} is already tokenized. Skipping")
                     continue
             
+                candidate_pkeys = list(filter(lambda x: x != col_hit_name))
+                if candidate_pkeys:
+                    pkey = candidate_pkeys[0]
+                else:
+                    continue
+            
                 # Choose if there are viable primary keys for tokenization
 
-                tokenize_column(cts, source_conn, schema, table_name, col_hit_name, table_size, batch_size)
+                tokenize_column(cts, source_conn, schema, table_name, col_hit_name, pkey, table_size, batch_size)
 
                 # Tag as tokenized
+                tag_column_thales_tokenized(bigid, ds_name, col_hit_name, obj_full_qual_name)
                 # Comment that tokenization was performed on column X at time Y
+                comment_tokenization(bigid, col_hit_name, annotation_id)
 
 
-    # conn = MySQLConnector("192.168.0.108", "3306", "TokenizationDemo", "test", "Thales123!")
-    # cts = CTSRequest("cts", "test", "Thales123!", r"C:\Users\rafae\OneDrive\Área de Trabalho\thales_bigid_anonimization_api\cts.pem")
-    # for offset, fetchnext in offset_fetchnext_iter(10, 3, 100):
-    #     pkeys, data = get_batch_pkey_data(conn, "customer_generic", "cpf", "email", offset, fetchnext)
-    #     tokens = cts.tokenize(data, "tokenization_group", "alphanum")
-    #     update_multiple_query = """
-    #         UPDATE TokenizationDemo.customer_generic
-    #         SET email = '%s'
-    #         WHERE cpf = '%s'
-    #     """
-    #     params_mult = [(pk, tk) for pk, tk in zip(pkeys, tokens)]
-    #     conn.run_query(update_multiple_query, is_multiple=True, params_mult=params_mult)
-    # conn.close()
+def comment_tokenization(bigid: BigIDAPI, col_tokenized: str, annotation_id: str):
+    date_today = datetime.datetime.now().strftime("%Y/%m/%d")
+    final_comment = f"<p>Column {col_tokenized} tokenized by Thales at {date_today}</p>"
+
+    bigid.add_comment(final_comment, annotation_id)
+
+
+def tag_column_thales_tokenized(bigid: BigIDAPI, source_name: str, col_hit_name: str,
+        obj_full_qual_name: str):
+    
+    tag_name = "Thales_Tokenized"
+    tag_description = "Tags the columns that were tokenized by the remediation app"
+
+    all_tags = bigid.get_object_tags(obj_full_qual_name)
+
+    matching_tags = list(filter(lambda x: x["tagName"] == tag_name, all_tags))
+    if matching_tags:
+        parent_id = matching_tags[0]["tagId"]
+    else:
+        parent_id = bigid.create_main_tag(tag_name, tag_description)
+
+    matching_subtags = list(filter(lambda x: x["tagValue"] == col_hit_name, all_tags))
+    if not matching_subtags:
+        subtag_id, _ = bigid.create_sub_tag(col_hit_name, parent_id,
+            f"Thales API Tokenized Column {col_hit_name}")
+        bigid.add_tag(obj_full_qual_name, source_name, parent_id, subtag_id)
 
 
 def get_primary_key(source_conn, table_name: str, schema: str = None) -> list:
@@ -96,16 +118,16 @@ def get_primary_key(source_conn, table_name: str, schema: str = None) -> list:
 
 
 def tokenize_column(cts: CTSRequest, source_conn, schema: str, table_name: str, col_hit_name: str,
-        primary_key: str, params: dict, nlines: int, batch_size: int):
+        primary_key: str, nlines: int, batch_size: int, tkgroup: str, tktemplate: str):
     for offset, fetchnext in offset_fetchnext_iter(nlines, batch_size):
-        pkeys, data = get_batch_pkey_data(source_conn, f"{schema}.{table_name}", "cpf", "email", offset, fetchnext)
-        tokens = cts.tokenize(data, "tokenization_group", "alphanum")
+        pkeys, data = get_batch_pkey_data(source_conn, f"{schema}.{table_name}", primary_key, col_hit_name, offset, fetchnext)
+        tokens = cts.tokenize(data, tkgroup, tktemplate)
         update_multiple_query = """
-            UPDATE TokenizationDemo.customer_generic
-            SET email = '%s'
-            WHERE cpf = '%s'
+            UPDATE '%s'
+            SET '%s' = '%s'
+            WHERE '%s' = '%s'
         """
-        params_mult = [(pk, tk) for pk, tk in zip(pkeys, tokens)]
+        params_mult = [(table_name, col_hit_name, tk, primary_key, pk) for pk, tk in zip(pkeys, tokens)]
         conn.run_query(update_multiple_query, is_multiple=True, params_mult=params_mult)
     conn.close()
 
