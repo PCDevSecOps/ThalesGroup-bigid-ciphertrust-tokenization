@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "This API reads all minimization requests and anonymize data",
   "category": "privacy",
-  "license_type":"FREE",
+  "license_type":"PRIVATE",
   "vendor": "BigID",
   "global_params": [],
   "actions": [
