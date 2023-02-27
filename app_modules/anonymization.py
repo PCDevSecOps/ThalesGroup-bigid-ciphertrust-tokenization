@@ -57,11 +57,14 @@ def update_table(records: Union[list, str], unique_id_record: dict,
         full_object_name      = records["fullObjectName"]
         _, schema, table_name = full_object_name.split(".")
 
-    update_query = source_conn.get_update_query(schema, table_name, tokens,
+    Log.info(f"{target_cols}, {target_col_vals}, {full_object_name}, {table_name}")
+
+    update_query = source_conn.get_update_query(table_name, tokens,
         target_cols, target_col_vals, unique_id_record["attr_original_name"],
         unique_id_record["value"])
-
+    
     source_conn.run_query(update_query)
+
 
 
 def connect_ds_anonymize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
@@ -114,8 +117,11 @@ def connect_ds_anonymize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
 
             if ut.category_allowed(unique_id_record["category"], categories):
                 Log.info("Unique identifier is selected for anonymization")
+                Log.info(unique_id_record["value"])
                 token = cts.tokenize(unique_id_record["value"], params["CTSTokengroup"],
                     params["CTSTokentemplate"])[0]
+                Log.info("tokenized")
+
                 update_table(unique_id_record, unique_id_record, source_conn, token)
                 Log.info("Unique identifier anonymized")
 

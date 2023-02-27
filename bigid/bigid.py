@@ -156,7 +156,7 @@ class BigIDAPI:
 
     def get_data_sources_policy_hit(self) -> list:
         self.validate_session_token()
-        url = f"{self._base_url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/datasource/auditor-datasource"
+        url = f"{self._base_url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/datasource/auditor-datasource"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -175,7 +175,7 @@ class BigIDAPI:
 
     def get_all_remediation_objects(self) -> list:
         self.validate_session_token()
-        url = f"{self._base_url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object"
+        url = f"{self._base_url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -202,7 +202,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object"
+        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -232,7 +232,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/columns-view?source={source_name}"
+        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/columns-view?source={source_name}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -256,7 +256,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/comment?annotation_id={obj_id}"
+        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/{obj_id}/comment"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -272,6 +272,29 @@ class BigIDAPI:
 
         return get_response.json()
 
+    def get_bigid_tags(self) -> list:
+            """
+            Get all tags stored in BigID
+            """
+            self.validate_session_token()
+
+            url = f"{self._base_url}data-catalog/tags/all-pairs"
+            headers = {
+                "Accept": "application/json",
+                "Authorization": self._access_token
+            }
+            get_response = ut.json_get_request(url, headers, self._proxies)
+            tags = get_response.json()["data"]
+
+            if get_response.status_code != 200:
+                Log.error("BigID object tags request failed with "
+                    + f"status code {get_response.status_code}: {get_response.text}")
+                raise BigIDAPIException("BigID object tags request failed"
+                    + f" with status code {get_response.status_code}: {get_response.text}")
+
+            return tags
+
+
     def get_object_tags(self, object_name: str) -> list:
         """
         Object name is the fully qualified name
@@ -283,7 +306,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/object-detail?object_name={object_name}"
+        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/object-detail?object_name={object_name}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -300,6 +323,8 @@ class BigIDAPI:
 
         return tags
 
+
+
     def create_main_tag(self, tag_name: str, tag_description: str = "") -> str:
         """
         Make sure the tag does not exist before running. Will return the new tag's
@@ -312,7 +337,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/tags/create-tag"
+        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/tags/create-tag"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -326,6 +351,7 @@ class BigIDAPI:
         post_response = ut.json_post_request(url, headers, content, self._proxies)
 
         if post_response.status_code != 200:
+            Log.info(post_response.text)
             Log.error("BigID create main tag request failed with "
                 + f"status code {post_response.status_code}")
             raise BigIDAPIException("BigID create main tag request failed"
@@ -347,7 +373,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/tags/create-tag"
+        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/tags/create-tag"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -383,7 +409,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/tags/add-tags"
+        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/tags/add-tags"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -420,7 +446,8 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/6390aaa101aadd7ac9e1d5ae/object/comment?annotation_id={annotation_id}"
+        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/{annotation_id}/comment"
+
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,

@@ -38,27 +38,25 @@ class CTSRequest:
         return response.json()
 
     def tokenize(self, values: Union[str, list], tokengroup: str, tokentemplate: str) -> list:
-        base = '{{"tokengroup": "{}", "data": "{}", "tokentemplate": "{}"}}'
-        if values is None:
-            return None
-        elif isinstance(values, list):
-            if len(values) == 0:
-                return values
-            content = [base.format(tokengroup, val_i, tokentemplate) for val_i in values]
-            content = "[" + ",".join(content) + "]"
-        else:
-            if len(values) == 0:
-                return [""]
-            content = "[" + base.format(tokengroup, values, tokentemplate) + "]"
 
-        response = self._make_request(json.loads(content), "tokenize")
+        if values == "" or values is None:
+            return [values]
+        if values == []:
+            return []
+        if isinstance(values, str):
+            to_tokenize_array = [{"tokengroup": tokengroup, "data": values, "tokentemplate": tokentemplate}]
+        else:
+            to_tokenize_array = [{"tokengroup": tokengroup, "data": val, "tokentemplate": tokentemplate} for val in values]
+
+        response = self._make_request(to_tokenize_array, "tokenize")
         tokens = []
+        if isinstance(response, dict) and "reason" in response:
+            raise CTSException(response["reason"])
         for resp, val in zip(response, values):
             if resp["status"] == "error":
                 if resp["reason"].startswith("After accounting for keepleft") or val is None:
                     tokens.append(val)
                     continue
-                raise CTSException(resp["reason"])
             tokens.append(resp["token"])
 
         return tokens
