@@ -54,11 +54,14 @@ def run_data_remediation(cts: CTSRequest, bigid: BigIDAPI, config: RawConfigPars
             Log.info("Got non column objects using Fully Qualified name")
             annotation_id = non_col_obj["id"]
             Log.info(f"Object annotation ID: {annotation_id}")
-            comments = bigid.get_object_comments(annotation_id)
-            Log.info("Got comments from Remediation object")
-            Log.info(str(comments))
-            tokenized_columns = get_tokenized_cols_from_comments(comments)
-            Log.info(f"List of columns that are already tokenized: {tokenized_columns}")
+
+            tokenized_columns = []
+            all_object_tags = bigid.get_object_tags(obj_full_qual_name)
+            Log.info(all_object_tags)
+            for tag in all_object_tags:
+                if tag["tagName"] == "Thales_Tokenized":
+                    tokenized_columns.append(tag["tagValue"])
+            Log.info(tokenized_columns)
 
 
             # Run query to get table size
@@ -94,9 +97,10 @@ def run_data_remediation(cts: CTSRequest, bigid: BigIDAPI, config: RawConfigPars
                 tokenize_column(cts, source_conn, schema, table_name, col_hit_name, pkey, table_size, batch_size, tkgroup, tktempl)
 
                 # Tag as tokenized
-                #tag_column_thales_tokenized(bigid, ds_name, col_hit_name, obj_full_qual_name)
+                tag_column_thales_tokenized(bigid, ds_name, col_hit_name, obj_full_qual_name)
                 # Comment that tokenization was performed on column X at time Y
                 #comment_tokenization(bigid, col_hit_name, annotation_id)
+        source_conn.close_connection()
 
 
 def comment_tokenization(bigid: BigIDAPI, col_tokenized: str, annotation_id: str):
@@ -113,21 +117,21 @@ def tag_column_thales_tokenized(bigid: BigIDAPI, source_name: str, col_hit_name:
     tag_description = "Tags the columns that were tokenized by the remediation app"
 
     all_tags = bigid.get_bigid_tags()
-    object_tags = bigid.get_object_tags(obj_full_qual_name)
 
-    matching_tags = list(filter(lambda x: x["tagName"] == tag_name, all_tags))
-    if matching_tags:
-        parent_id = matching_tags[0]["tagId"]
+    matching_tags_by_tagname = list(filter(lambda x: x["tagName"] == tag_name, all_tags))
+    if matching_tags_by_tagname:
+        parent_id = matching_tags_by_tagname[0]["tagId"]
     else:
         parent_id = bigid.create_main_tag(tag_name, tag_description)
 
-    matching_subtags = list(filter(lambda x: x["tagValue"] == col_hit_name, object_tags))
-    if not matching_subtags:
+    matching_tagname_tagval = list(filter(lambda x: x["tagName"] == tag_name
+                                          and x["tagValue"] == col_hit_name, all_tags))[0]
+    if not matching_tagname_tagval:
         subtag_id, _ = bigid.create_sub_tag(col_hit_name, parent_id,
             f"Thales API Tokenized Column {col_hit_name}")
-        bigid.add_tag(obj_full_qual_name, source_name, parent_id, subtag_id)
-
-
+    else:
+        subtag_id = matching_tagname_tagval["valueId"]
+    bigid.add_tag(obj_full_qual_name, source_name, parent_id, subtag_id)
 
 def get_primary_key(source_conn, table_name: str, schema: str = None) -> list:
     return source_conn.get_primary_keys(table_name, schema)
@@ -145,7 +149,6 @@ def tokenize_column(cts: CTSRequest, source_conn, schema: str, table_name: str, 
         """
         params_mult = [(tk, pk) for pk, tk in zip(pkeys, tokens)]
         source_conn.run_query(update_multiple_query, is_multiple=True, params_mult=params_mult)
-    source_conn.close_connection()
 
 
 def get_tokenized_cols_from_comments(comments: list) -> list:
@@ -159,7 +162,6 @@ def get_tokenized_cols_from_comments(comments: list) -> list:
     return cols
 
     
-
 def get_ds_connector(bigid: BigIDAPI, config: RawConfigParser, tpa_id: str, ds_name: str):
     ds_conn_getter = bigid.get_data_source_conn_from_source_name(ds_name)
     ds_conn_getter.set_credentials(
@@ -190,4 +192,3 @@ def get_batch_pkey_data(ds_conn, table_name: str, primary_key: str, column: str,
     pkeys = [p[0] for p in batch]
     data = [d[1] for d in batch]
     return pkeys, data
-

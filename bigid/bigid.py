@@ -156,7 +156,7 @@ class BigIDAPI:
 
     def get_data_sources_policy_hit(self) -> list:
         self.validate_session_token()
-        url = f"{self._base_url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/datasource/auditor-datasource"
+        url = f"{self._base_url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/datasource/auditor-datasource"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -175,7 +175,7 @@ class BigIDAPI:
 
     def get_all_remediation_objects(self) -> list:
         self.validate_session_token()
-        url = f"{self._base_url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object"
+        url = f"{self._base_url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -202,7 +202,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object"
+        url = f"{url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -232,7 +232,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/columns-view?source={source_name}"
+        url = f"{url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object/columns-view?source={source_name}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -256,7 +256,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/{obj_id}/comment"
+        url = f"{url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object/{obj_id}/comment"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -306,7 +306,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/object-detail?object_name={object_name}"
+        url = f"{url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object/object-detail?object_name={object_name}"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -337,7 +337,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/tags/create-tag"
+        url = f"{url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object/tags/create-tag"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -373,7 +373,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/tags/create-tag"
+        url = f"{url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object/tags/create-tag"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -409,7 +409,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/tags/add-tags"
+        url = f"{url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object/tags/add-tags"
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token,
@@ -446,7 +446,7 @@ class BigIDAPI:
         else:
             url = self._base_url
 
-        url = f"{url}proxy/tpa/api/{self._config['BigID']['remediation_id']}/object/{annotation_id}/comment"
+        url = f"{url}proxy/tpa/api/63efcf00b1a61a127cf89cf2/object/{annotation_id}/comment"
 
         headers = {
             "Accept": "application/json",
