@@ -12,8 +12,9 @@ import utils.utils as ut
 def run_data_anonymization(config: RawConfigParser, params: dict, tpa_id: str, cts: CTSRequest,
         bigid: BigIDAPI):
 
-    bigid.update_minimization_requests()
-    minimization_requests = bigid.get_minimization_requests()
+    minimization_requests = get_batch_minimization_requests(bigid)
+
+    # minimization_requests = bigid.get_minimization_requests()
     if len(minimization_requests.keys()) == 0:
         Log.info("No deletion requests found! Exiting action")
         return
@@ -131,3 +132,15 @@ def connect_ds_anonymize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
         raise err
 
     source_conn.close_connection()
+
+
+def get_batch_minimization_requests(bigid: BigIDAPI, batch_size: int = 10,
+                                    nlines: int = 100000) -> dict:
+    minimization_requests = {}
+    for offset, fetch_next in ut.offset_fetchnext_iter(nlines, batch_size):
+        batch_minimization_requests = bigid.update_minimization_requests(offset, fetch_next)
+        if len(batch_minimization_requests) == 0:
+            break
+        ut.merge_anonymization_dicts(minimization_requests, batch_minimization_requests)
+
+    return minimization_requests

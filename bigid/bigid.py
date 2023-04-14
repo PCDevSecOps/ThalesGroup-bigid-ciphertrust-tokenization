@@ -19,7 +19,7 @@ class BigIDAPI:
 
         self._access_token_time        = None
         self._access_token             = None
-        self._minimization_requests    = []
+        #self._minimization_requests    = []
 
         self._update_session_token()
 
@@ -44,9 +44,12 @@ class BigIDAPI:
         if time.time() - self._access_token_time > self._access_token_h_duration * 3600:
             self._update_session_token()
 
-    def update_minimization_requests(self):
+    def update_minimization_requests(self, offset: int, fetch_next: int) -> dict:
         self.validate_session_token()
-        url = f"{self._base_url}data-minimization/objects"
+        url = f'{self._base_url}data-minimization/objects?skip={offset}&limit={fetch_next}' +\
+            '&requireTotalCount=true&sort=[{"field":"name","order":"asc"}]' +\
+            '&filter=[{"field":"state","value":["Pending"],"operator":"in"},' +\
+                    '{"field":"markedAs","value":["Delete Manually"],"operator":"in"}]'
         headers = {
             "Accept": "application/json",
             "Authorization": self._access_token
@@ -64,11 +67,6 @@ class BigIDAPI:
         # each request = {"<requestId>": {"selected": [fobjn1, fobjn2, ...], "ids": [id1, id2, ...]}}
         for req in get_response["data"]["deleteQueries"]:
 
-            if not (req["state"] == "Pending"
-                    and "markedAs" in req
-                    and req["markedAs"] == "Delete Manually"):
-                continue
-
             request_id = req["requestId"]
             full_obj_name = req["fullObjectName"]
             obj_id = req["_id"]
@@ -79,11 +77,12 @@ class BigIDAPI:
                 min_requests[request_id] = {"selected": [full_obj_name]}
                 min_requests[request_id]["ids"] = [obj_id]
 
-        self._minimization_requests = min_requests
-        Log.info(f"Got {len(self._minimization_requests)} minimization requests from BigID")
+        #self._minimization_requests = min_requests
+        Log.info(f"Got {len(min_requests)} minimization requests from BigID")
+        return min_requests
 
-    def get_minimization_requests(self) -> list:
-        return self._minimization_requests
+    #def get_minimization_requests(self) -> list:
+    #    return self._minimization_requests
 
     def get_sar_report(self, request_id: str) -> list:
         self.validate_session_token()

@@ -10,6 +10,7 @@ from databases.mysql_conn import MySQLConnector
 from cts.cts_request import CTSRequest
 from databases.ds_connection import DataSourceConnection
 from utils.log import Log
+from utils.utils import offset_fetchnext_iter
 
 
 def run_data_remediation(cts: CTSRequest, bigid: BigIDAPI, config: RawConfigParser, params: dict, tpa_id: str):
@@ -99,7 +100,7 @@ def run_data_remediation(cts: CTSRequest, bigid: BigIDAPI, config: RawConfigPars
                 # Tag as tokenized
                 tag_column_thales_tokenized(bigid, ds_name, col_hit_name, obj_full_qual_name)
                 # Comment that tokenization was performed on column X at time Y
-                #comment_tokenization(bigid, col_hit_name, annotation_id)
+                comment_tokenization(bigid, col_hit_name, annotation_id)
         source_conn.close_connection()
 
 
@@ -125,12 +126,12 @@ def tag_column_thales_tokenized(bigid: BigIDAPI, source_name: str, col_hit_name:
         parent_id = bigid.create_main_tag(tag_name, tag_description)
 
     matching_tagname_tagval = list(filter(lambda x: x["tagName"] == tag_name
-                                          and x["tagValue"] == col_hit_name, all_tags))[0]
+                                          and x["tagValue"] == col_hit_name, all_tags))
     if not matching_tagname_tagval:
         subtag_id, _ = bigid.create_sub_tag(col_hit_name, parent_id,
             f"Thales API Tokenized Column {col_hit_name}")
     else:
-        subtag_id = matching_tagname_tagval["valueId"]
+        subtag_id = matching_tagname_tagval[0]["valueId"]
     bigid.add_tag(obj_full_qual_name, source_name, parent_id, subtag_id)
 
 def get_primary_key(source_conn, table_name: str, schema: str = None) -> list:
@@ -147,6 +148,7 @@ def tokenize_column(cts: CTSRequest, source_conn, schema: str, table_name: str, 
             SET {col_hit_name} = :1
             WHERE {pkey_col_name} = :2
         """
+        Log.info(update_multiple_query)
         params_mult = [(tk, pk) for pk, tk in zip(pkeys, tokens)]
         source_conn.run_query(update_multiple_query, is_multiple=True, params_mult=params_mult)
 
@@ -177,13 +179,6 @@ def get_nlines(ds_conn, table_name: str) -> int:
     nlines = ds_conn.run_query(query, fetch_results=True)
     return nlines[0][0]
 
-
-def offset_fetchnext_iter(nlines: int, batch_size: int, start_offset: int = 0) -> tuple:
-    batch_size = int(batch_size)
-    for i in range(math.ceil(nlines / batch_size)):
-        offset = i * batch_size + start_offset
-        fetch_next = min(batch_size, nlines - i * batch_size)
-        yield (offset, fetch_next)
 
 
 def get_batch_pkey_data(ds_conn, table_name: str, primary_key: str, column: str,
