@@ -3,3 +3,5 @@ requests
 mysql-connector-python
 oracledb
 pycryptodomex
+psycopg2
+pyodbc

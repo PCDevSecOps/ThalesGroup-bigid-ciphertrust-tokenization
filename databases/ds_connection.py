@@ -2,9 +2,11 @@ import hashlib
 
 from databases.mysql_conn import MySQLConnector
 from databases.oracle_conn import OracleConnector
+from databases.postgresql_conn import PostgreSQLConnector
+#from databases.sqlserver_conn import SQLServerConnector
 from Cryptodome.Cipher import AES
 from base64 import b64decode
-
+from utils.log import Log
 
 class DataSourceConnection:
     """
@@ -54,7 +56,9 @@ class DataSourceConnection:
     def get_all_implemented_connector_types():
         return [
             "rdb-mysql",
-            "rdb-oracle"
+            "rdb-oracle",
+            "rdb-mssql",
+            "rdb-postgresql"
         ]
 
     def get_conn_param(self) -> list:
@@ -64,6 +68,10 @@ class DataSourceConnection:
         if self._rdb_type == "rdb-mysql":
             return self._get_mysql_conn_params()
         elif self._rdb_type == "rdb-oracle":
+            return self._get_oracle_conn_params()
+        elif self._rdb_type == "rdb-postgresql":
+            return self._get_postgresql_conn_params()
+        elif self._rdb_type == "mssql-oracle":
             return self._get_oracle_conn_params()
         else:
             raise NotImplementedError("DataSourceConnection does not"
@@ -86,4 +94,13 @@ class DataSourceConnection:
         port, sid = port_sid.split("/")
         port = int(port)
         return (OracleConnector, hostname, port, sid)
+    
+    def _get_postgresql_conn_params(self) -> list:
+        """
+        PostgreSQL URL format: <IP|hostname>:<port>/<SID>
+        """
+        hostname, port_sid = self._rdb_url.split(":")
+        port, sid = port_sid.split("/")
+        port = int(port)
+        return (PostgreSQLConnector, hostname, port, sid)
     

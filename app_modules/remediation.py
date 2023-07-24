@@ -6,8 +6,9 @@ from configparser import RawConfigParser
 
 from cts.cts_request import CTSRequest
 from bigid.bigid import BigIDAPI
+from databases.oracle_conn import OracleConnector
 from databases.mysql_conn import MySQLConnector
-from cts.cts_request import CTSRequest
+from databases.postgresql_conn import PostgreSQLConnector
 from databases.ds_connection import DataSourceConnection
 from utils.log import Log
 from utils.utils import offset_fetchnext_iter
@@ -96,7 +97,6 @@ def run_data_remediation(cts: CTSRequest, bigid: BigIDAPI, config: RawConfigPars
                 Log.info(f"Tokenizing column {col_hit_name} of {table_name}")
                 
                 tokenize_column(cts, source_conn, schema, table_name, col_hit_name, pkey, table_size, batch_size, tkgroup, tktempl)
-
                 # Tag as tokenized
                 tag_column_thales_tokenized(bigid, ds_name, col_hit_name, obj_full_qual_name)
                 # Comment that tokenization was performed on column X at time Y
@@ -140,18 +140,30 @@ def get_primary_key(source_conn, table_name: str, schema: str = None) -> list:
 
 def tokenize_column(cts: CTSRequest, source_conn, schema: str, table_name: str, col_hit_name: str,
         pkey_col_name: str, nlines: int, batch_size: int, tkgroup: str, tktemplate: str):
-    for offset, fetchnext in offset_fetchnext_iter(nlines, batch_size):
-        pkeys, data = get_batch_pkey_data(source_conn, table_name, pkey_col_name, col_hit_name, offset, fetchnext)
-        tokens = cts.tokenize(data, tkgroup, tktemplate)
-        update_multiple_query = f"""
-            UPDATE {table_name}
-            SET {col_hit_name} = :1
-            WHERE {pkey_col_name} = :2
-        """
-        Log.info(update_multiple_query)
-        params_mult = [(tk, pk) for pk, tk in zip(pkeys, tokens)]
-        source_conn.run_query(update_multiple_query, is_multiple=True, params_mult=params_mult)
-
+    if isinstance(source_conn,OracleConnector):
+        for offset, fetchnext in offset_fetchnext_iter(nlines, batch_size):
+            pkeys, data = get_batch_pkey_data(source_conn, table_name, pkey_col_name, col_hit_name, offset, fetchnext)
+            tokens = cts.tokenize(data, tkgroup, tktemplate)
+            update_multiple_query = f"""
+                UPDATE {table_name}
+                SET {col_hit_name} = :1
+                WHERE {pkey_col_name} = :2
+            """
+            params_mult = [(tk, pk) for pk, tk in zip(pkeys, tokens)]
+            source_conn.run_query(update_multiple_query, is_multiple=True, params_mult=params_mult)
+            
+    elif isinstance(source_conn,PostgreSQLConnector):
+        for offset, fetchnext in offset_fetchnext_iter(nlines, batch_size):
+            pkeys, data = get_batch_pkey_data(source_conn, table_name, pkey_col_name, col_hit_name, offset, fetchnext)
+            tokens = cts.tokenize(data, tkgroup, tktemplate)
+            update_multiple_query = f"""
+                UPDATE {table_name}
+                SET {col_hit_name} = %s
+                WHERE {pkey_col_name} = %s
+            """
+            params_mult = [(tk, pk) for pk, tk in zip(pkeys, tokens)]
+            source_conn.run_query(update_multiple_query, is_multiple=True, params_mult=params_mult)
+ 
 
 def get_tokenized_cols_from_comments(comments: list) -> list:
     cols = []
@@ -178,7 +190,6 @@ def get_nlines(ds_conn, table_name: str) -> int:
     query = f"SELECT COUNT(*) FROM {table_name}"
     nlines = ds_conn.run_query(query, fetch_results=True)
     return nlines[0][0]
-
 
 
 def get_batch_pkey_data(ds_conn, table_name: str, primary_key: str, column: str,

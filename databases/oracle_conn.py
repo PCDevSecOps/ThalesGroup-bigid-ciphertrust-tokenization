@@ -123,6 +123,7 @@ class OracleConnector(DBConnectionInterface):
             ORDER BY {primary_key}
             OFFSET {offset} ROWS FETCH NEXT {fetch_next} ROWS ONLY
         """
+        Log.info(query)
         return self.run_query(query, fetch_results=True)
     
     def close_connection(self):
