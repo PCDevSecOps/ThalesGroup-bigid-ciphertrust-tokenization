@@ -1,4 +1,5 @@
 import requests
+import math
 
 from configparser import RawConfigParser
 from requests.adapters import HTTPAdapter, Retry
@@ -101,3 +102,20 @@ def category_allowed(categories_found: list, categories_allowed: Union[list, set
 def get_proxy_from_config(config: RawConfigParser):
     cfgproxy = config["Proxy"]
     return {key: cfgproxy[key] for key in cfgproxy if cfgproxy[key]}
+
+
+def offset_fetchnext_iter(nlines: int, batch_size: int, start_offset: int = 0) -> tuple:
+    batch_size = int(batch_size)
+    for i in range(math.ceil(nlines / batch_size)):
+        offset = i * batch_size + start_offset
+        fetch_next = min(batch_size, nlines - i * batch_size)
+        yield (offset, fetch_next)
+    
+
+def merge_anonymization_dicts(dest: dict, source: dict):
+    for request_id in source.keys():
+        if request_id in dest:
+            dest[request_id]["selected"] += source[request_id]["selected"]
+            dest[request_id]["ids"] += source[request_id]["ids"]
+        else:
+            dest[request_id] = source[request_id]

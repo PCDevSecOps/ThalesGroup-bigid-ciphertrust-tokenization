@@ -12,8 +12,9 @@ import utils.utils as ut
 def run_data_anonymization(config: RawConfigParser, params: dict, tpa_id: str, cts: CTSRequest,
         bigid: BigIDAPI):
 
-    bigid.update_minimization_requests()
-    minimization_requests = bigid.get_minimization_requests()
+    minimization_requests = get_batch_minimization_requests(bigid)
+
+    # minimization_requests = bigid.get_minimization_requests()
     if len(minimization_requests.keys()) == 0:
         Log.info("No deletion requests found! Exiting action")
         return
@@ -57,11 +58,14 @@ def update_table(records: Union[list, str], unique_id_record: dict,
         full_object_name      = records["fullObjectName"]
         _, schema, table_name = full_object_name.split(".")
 
-    update_query = source_conn.get_update_query(schema, table_name, tokens,
+    Log.info(f"{target_cols}, {target_col_vals}, {full_object_name}, {table_name}")
+
+    update_query = source_conn.get_update_query(table_name, tokens,
         target_cols, target_col_vals, unique_id_record["attr_original_name"],
         unique_id_record["value"])
-
+    
     source_conn.run_query(update_query)
+
 
 
 def connect_ds_anonymize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
@@ -114,8 +118,11 @@ def connect_ds_anonymize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
 
             if ut.category_allowed(unique_id_record["category"], categories):
                 Log.info("Unique identifier is selected for anonymization")
+                Log.info(unique_id_record["value"])
                 token = cts.tokenize(unique_id_record["value"], params["CTSTokengroup"],
                     params["CTSTokentemplate"])[0]
+                Log.info("tokenized")
+
                 update_table(unique_id_record, unique_id_record, source_conn, token)
                 Log.info("Unique identifier anonymized")
 
@@ -125,3 +132,15 @@ def connect_ds_anonymize(ds_conn_getter: DataSourceConnection, cts: CTSRequest,
         raise err
 
     source_conn.close_connection()
+
+
+def get_batch_minimization_requests(bigid: BigIDAPI, batch_size: int = 10,
+                                    nlines: int = 100000) -> dict:
+    minimization_requests = {}
+    for offset, fetch_next in ut.offset_fetchnext_iter(nlines, batch_size):
+        batch_minimization_requests = bigid.update_minimization_requests(offset, fetch_next)
+        if len(batch_minimization_requests) == 0:
+            break
+        ut.merge_anonymization_dicts(minimization_requests, batch_minimization_requests)
+
+    return minimization_requests

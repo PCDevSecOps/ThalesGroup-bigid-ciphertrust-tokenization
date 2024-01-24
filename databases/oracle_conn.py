@@ -72,13 +72,13 @@ class OracleConnector(DBConnectionInterface):
                     return rows
 
             except Exception as err:
-                Log.error(f"Error while executing MySQL query: {err}")
+                Log.error(f"Error while executing Oracle query: {err}")
                 raise Exception(err) from err
         else:
             Log.warn("Oracle connection is not established. Will not execute query")
 
     def get_primary_keys(self, table_name: str, schema: str = None):
-        source = f"{schema.upper()}.{table_name.upper()}" if schema else table_name.upper()
+        source = table_name.upper()
         query = f"""
             SELECT cols.table_name, cols.column_name, cols.position, cons.status, cons.owner
             FROM all_constraints cons, all_cons_columns cols
@@ -93,9 +93,9 @@ class OracleConnector(DBConnectionInterface):
             return [pk[1] for pk in pkey_list]
         return []
 
-    def get_update_query(self, schema: str, table_name: str, token: Union[str, list],
+    def get_update_query(self, table_name: str, token: Union[str, list],
             target_col: Union[str, list], target_col_val: Union[str, list],
-            unique_id_col: str, unique_id_val: str):
+            unique_id_col: str, unique_id_val: str, schema: str = None):
 
         if isinstance(token, list) and isinstance(target_col, list)\
                 and isinstance(target_col_val, list):
@@ -107,11 +107,12 @@ class OracleConnector(DBConnectionInterface):
             where_str = f"\"{target_col}\" = '{target_col_val}'"
 
         query = f"""
-            UPDATE {schema}.{table_name} SET
+            UPDATE {table_name} SET
             {set_str}
             WHERE {where_str} AND \"{unique_id_col}\" = '{unique_id_val}'
         """
         return query
+
     
     def get_batch(self, table_name: str, primary_key: str, column: str, offset: int,
             fetch_next: int, schema: str = None) -> list:
@@ -120,8 +121,9 @@ class OracleConnector(DBConnectionInterface):
             SELECT {primary_key}, {column}
             FROM {source}
             ORDER BY {primary_key}
-            OFFSET {offset} ROWS FETCH NEXT {fetch_next} ROWS ONLY;
+            OFFSET {offset} ROWS FETCH NEXT {fetch_next} ROWS ONLY
         """
+        Log.info(query)
         return self.run_query(query, fetch_results=True)
     
     def close_connection(self):

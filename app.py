@@ -5,6 +5,7 @@ from utils.log import create_log_file
 
 import json
 import argparse
+import traceback
 
 app = Flask(__name__)
 
@@ -78,7 +79,7 @@ def execute():
 
     except Exception as err:
             json_response["message"] = "Error - attempt to execute action "\
-                + f"{action_name} failed: {err}"
+                + f"{action_name} failed: {traceback.format_exc()}"
 
     return json.dumps(json_response)
 

@@ -102,10 +102,10 @@
         },
         {
           "param_name": "BatchSize",
-          "param_type": "Int",
+          "param_type": "String",
           "is_cleartext": true,
           "param_description": "Tokenization batch size",
-          "default_value": 100,
+          "default_value": "100",
           "param_priority": "primary",
           "is_mandatory": true
         }
