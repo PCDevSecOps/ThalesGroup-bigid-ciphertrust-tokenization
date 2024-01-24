@@ -1,0 +1,5 @@
+Flask>=2.0.2,<3.0
+requests
+mysql-connector-python
+oracledb
+pycryptodomex

@@ -1,0 +1,137 @@
+{
+  "app_name": "Thales-BigID Anonymization API",
+  "version": "1.0.0",
+  "description": "This API reads all minimization requests and anonymize data",
+  "category": "privacy",
+  "license_type":"FREE",
+  "vendor": "BigID",
+  "global_params": [],
+  "actions": [
+    {
+      "action_id": "Anonymize",
+      "description": "Reads all pending minimization requests and updates data sources with irreversible tokens",
+      "is_sync": true,
+      "action_params": [
+        {
+          "param_name": "Categories",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "List of comma separated categories to be anonymized. If empty, will anonymize everything. E.g. 'PII,Financial'",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": false
+        },
+        {
+          "param_name": "CTSUsername",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "The CTS user that will perform the anonymization",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSPassword",
+          "param_type": "String",
+          "is_cleartext": false,
+          "param_description": "CTS user's password",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSTokengroup",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "CTS Tokenization Group",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSTokentemplate",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "CTS Tokenization Template",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        }
+      ]
+    },
+    {
+      "action_id": "Remediate",
+      "description": "Tokenizes columns in data sources that have violated a BigID policy",
+      "is_sync": true,
+      "action_params": [
+        {
+          "param_name": "CTSUsername",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "The CTS user that will perform the anonymization",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSPassword",
+          "param_type": "String",
+          "is_cleartext": false,
+          "param_description": "CTS user's password",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSTokengroup",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "CTS Tokenization Group",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "CTSTokentemplate",
+          "param_type": "String",
+          "is_cleartext": true,
+          "param_description": "CTS Tokenization Template",
+          "default_value": "",
+          "param_priority": "primary",
+          "is_mandatory": true
+        },
+        {
+          "param_name": "BatchSize",
+          "param_type": "Int",
+          "is_cleartext": true,
+          "param_description": "Tokenization batch size",
+          "default_value": 100,
+          "param_priority": "primary",
+          "is_mandatory": true
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    {
+      "action": "data-owner",
+      "label": "Data Owner",
+      "description": "This is an admin permission description"
+    },
+    {
+      "action": "auditor",
+      "label": "Auditor",
+      "description": "This is an owner permission description"
+    },
+    {
+      "action": "admin",
+      "label": "Admin",
+      "description": "This is an viewer permission description"
+    },
+    {
+      "action": "individual",
+      "label": "Individual",
+      "description": "This is an viewer permission description"
+    }
+  ]
+}
