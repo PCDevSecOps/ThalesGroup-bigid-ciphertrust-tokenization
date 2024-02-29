@@ -92,7 +92,7 @@ Finally, run the application. If the execution was successful, a green icon will
 
 
 ## License
-Thales <> BigID API is available under the <span style="background-color: #FFFF00">TBD</span> license. See the LICENSE file for more info.
+Thales <> BigID API is available under the MIT license. See the LICENSE file for more info.
 
 
 ## Contact
